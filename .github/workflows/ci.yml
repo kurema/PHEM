@@ -1,0 +1,19 @@
+name: Builder
+
+on:
+  push:
+    tags: '*'
+  workflow_dispatch:
+  
+jobs:
+  release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: build
+      shell: cmd
+      run: |
+        gradlew.bat 
+        
