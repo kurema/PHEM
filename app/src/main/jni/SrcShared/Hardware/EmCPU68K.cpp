@@ -89,6 +89,9 @@ uae_u32	gKernelStackOverflowed;
 
 // Definitions of the stack frames used in EmCPU68K::ProcessException.
 
+//Test
+template <typename T, int> struct type_;
+#define PRINT_SIZEOF(type) inline void size_of_(type_<type, sizeof(type)>) {}
 //#include "PalmPack.h"
 
 struct alignas(2) ExceptionStackFrame1
@@ -1193,6 +1196,7 @@ void EmCPU68K::ProcessException (ExceptionNumber exception)
 
 	if (exception == kException_BusErr || exception == kException_AddressErr)
 	{
+		PRINT_SIZEOF(ExceptionStackFrame2);
 		static_assert (sizeof (ExceptionStackFrame2) == 14, "sizeof(ExceptionStackFrame2) not correct.");
 		m68k_areg (regs, 7) -= sizeof (ExceptionStackFrame2);
 		CHECK_STACK_POINTER_DECREMENT ();
