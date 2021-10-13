@@ -30,10 +30,10 @@
 // into centivolts is tailored to each device during manufacturing.
 //--------------------------------------------------------------------
 typedef struct {
-	UInt16	lowCentivolts;
-	UInt16	lowAToDOutput;
-	UInt16	highCentivolts;
-	UInt16	highAToDOutput;
+	uint16_t	lowCentivolts;
+	uint16_t	lowAToDOutput;
+	uint16_t	highCentivolts;
+	uint16_t	highAToDOutput;
 } SysAToDCalibrationTokenType;
 
 
@@ -79,9 +79,9 @@ typedef enum {
 // of IDs representing features of THEIR particular hardware. Only the oemID and productID fields
 // are mandatory, the values of which are assigned to the OEM partner by Palm Computing.
 typedef struct {
-	UInt32	oemID;
-	UInt32	productID;
-	UInt32	featureIDs[1];		// OEM-specific variable length data goes here (0 or more DWords)
+	uint32_t	oemID;
+	uint32_t	productID;
+	uint32_t	featureIDs[1];		// OEM-specific variable length data goes here (0 or more DWords)
 } HwrIDRec, *HwrIDRecP;
 
 // The following ROM token activates the software-only hardware ID and features detection code.
