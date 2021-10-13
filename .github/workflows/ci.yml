@@ -12,11 +12,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: fool the tool
-      run: |
-        cd /usr/local/lib/android/sdk/ndk-bundle/toolchains
-        ln -s aarch64-linux-android-4.9 mips64el-linux-android
-        ln -s arm-linux-androideabi-4.9 mipsel-linux-android
+#Required if you use default ndk
+#    - name: fool the tool
+#      run: |
+#        cd /usr/local/lib/android/sdk/ndk-bundle/toolchains
+#        ln -s aarch64-linux-android-4.9 mips64el-linux-android
+#        ln -s arm-linux-androideabi-4.9 mipsel-linux-android
     - name: Set up JDK 8
       uses: actions/setup-java@v2
       with:
@@ -52,6 +53,12 @@ jobs:
       uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
     - name: build
       run: |
+        if [[ -n "${{ secrets.KEYSTORE_BASE64 }}" ]]; then
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
+          export KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
+          export KEY_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
+        fi
         chmod +x ./gradlew
         ./gradlew assembleRelease
     - uses: actions/upload-artifact@v2
