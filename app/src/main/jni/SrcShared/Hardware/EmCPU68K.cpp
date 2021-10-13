@@ -89,15 +89,15 @@ uae_u32	gKernelStackOverflowed;
 
 // Definitions of the stack frames used in EmCPU68K::ProcessException.
 
-#include "PalmPack.h"
+//#include "PalmPack.h"
 
-struct ExceptionStackFrame1
+struct alignas(2) ExceptionStackFrame1
 {
 	uint16 statusRegister;
 	uint32 programCounter;
 };
 
-struct ExceptionStackFrame2
+struct alignas(2) ExceptionStackFrame2
 {
 	uint16 functionCode;
 	uint32 accessAddress;
@@ -106,7 +106,7 @@ struct ExceptionStackFrame2
 	uint32 programCounter;
 };
 
-#include "PalmPackPop.h"
+//#include "PalmPackPop.h"
 
 
 EmCPU68K*	gCPU68K;
