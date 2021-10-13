@@ -71,20 +71,8 @@
 //  following constants:
 #define	CPU_68K  				0		// Motorola 68K type
 #define	CPU_x86  				1		// Intel x86 type
-#ifndef PUBLIC_STUFF_STRIPPED
-#define	CPU_PPC  				2		// Motorola/IBM PowerPC type
-#define	CPU_ARM  				3		// ARM type
-#endif // PUBLIC_STUFF_STRIPPED
 
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// The makefile should set the define CPU_ENDIAN to one of the following:
-// Note: its not just a define because some processors support both.
-// If CPU_ENDIAN is not defined in the makefile then a default is set
-// based on the CPU_TYPE.
-#define  CPU_ENDIAN_BIG       0     // Big endian
-#define  CPU_ENDIAN_LITTLE    1     // Little endian
-#endif // PUBLIC_STUFF_STRIPPED
 
 
 // The makefile should set the define MODEL to one of the
@@ -142,18 +130,6 @@
 #define	CML_ENCODER_ON						1
 
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// The PalmOptLocale.h file defines LOCALE to be one of these.
-// WARNING!!! Use of LOCALE implies non-international code and/or builds,
-// which is a VERY BAD thing. LOCALE should ONLY be used as a last
-// resort!!!!
-#define LOCALE_enUS					0
-#define LOCALE_deDE					1
-#define LOCALE_esES					2
-#define LOCALE_frFR					3
-#define LOCALE_itIT					4
-#define LOCALE_jpJP					5
-#endif // PUBLIC_STUFF_STRIPPED
 
 
 #endif

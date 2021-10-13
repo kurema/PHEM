@@ -97,9 +97,6 @@
 // 10/29/99 SCL: Renamed hwrMiscFlagIDOther to hwrMiscFlagIDCheckROMToken
 // 10/29/99 SCL: Assigned hwrMiscFlagIDUnused1 to hwrMiscFlagIDUndetermined for Palm OS 3.5
 // 10/29/99 SCL: Assigned hwrMiscFlagIDUnused2 to hwrMiscFlagIDCheckOEMFtrs for Palm OS 3.5
-#ifndef PUBLIC_STUFF_STRIPPED		// remove unreleased product codenames for 3.5 SDK
-// 11/ 2/99 SCL: Assigned hwrMiscFlagIDUnused3 to hwrMiscFlagIDCobra2 for Palm OS 3.5
-#endif // PUBLIC_STUFF_STRIPPED
 
 
 // hwrMiscFlagIDCheckROMToken indicates that the actual device ID information
@@ -132,20 +129,11 @@
 #define	hwrMiscFlagIDJerryEZ			(hwrMiscFlagID3 | hwrMiscFlagID2)
 #define	hwrMiscFlagIDSumo				(hwrMiscFlagID4 | hwrMiscFlagID2 | hwrMiscFlagID1)
 #define	hwrMiscFlagIDBrad				(hwrMiscFlagID4 | hwrMiscFlagID3 | hwrMiscFlagID1)
-#ifndef PUBLIC_STUFF_STRIPPED		// remove unreleased product codenames for 3.5 SDK
-#define	hwrMiscFlagIDAustin			(hwrMiscFlagID4 | hwrMiscFlagID1)
-#define	hwrMiscFlagIDCobra2			(hwrMiscFlagID2 | hwrMiscFlagID1)
-#define	hwrMiscFlagIDCalvin			(hwrMiscFlagID2 | hwrMiscFlagID1)
-#endif // PUBLIC_STUFF_STRIPPED
 
 // Hardware SubIDs used to detect hardware type early in boot process
 #define	hwrMiscFlagExtSubIDBrad				0x0
 #define	hwrMiscFlagExtSubIDSumo				0x2
 #define	hwrMiscFlagExtSubIDCobra			0x4
-#ifndef PUBLIC_STUFF_STRIPPED		// remove unreleased product codenames for 3.5 SDK
-#define	hwrMiscFlagExtSubIDCobra2_16		0x6
-#define	hwrMiscFlagExtSubIDCobra2_20		0x7
-#endif // PUBLIC_STUFF_STRIPPED
 
 
 // Old-style Hardware IDs still unused
@@ -206,14 +194,7 @@
 // HALs that belong to hwrOEMCompanyIDPalmDevices
 #define hwrOEMHALID328Jerry			'jery'			// Pilot, PalmPilot, Palm III/VII HAL (Palm Computing)
 #define hwrOEMHALIDEZSumo				'sumo'			// Palm IIIx/V/Vx HAL (Palm Computing)
-#ifndef PUBLIC_STUFF_STRIPPED		// remove unreleased product codenames for 3.5 SDK
-#define hwrOEMHALIDEZAustin			'astn'			// Austin HAL (Palm Computing)
-#endif // PUBLIC_STUFF_STRIPPED
 
-#ifndef PUBLIC_STUFF_STRIPPED
-#define hwrOEMHALIDEZCalvin			'clvn'			// Calvin HAL (Palm Computing)
-#define hwrOEMHALIDEZBonanza			'bnza'			// Bonanza HAL (Palm Computing)
-#endif // PUBLIC_STUFF_STRIPPED
 
 #endif 	//__HWR_MISCFLAGS_H__
 

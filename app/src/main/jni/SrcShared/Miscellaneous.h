@@ -14,10 +14,15 @@
 #ifndef _MISCELLANEOUS_H_
 #define _MISCELLANEOUS_H_
 
+#include "Byteswapping.h"		// Canonical
 #include "EmStructs.h"			// DatabaseInfoList
 
 class Chunk;
 class EmRect;
+
+void CommonStartup (void);
+void CommonShutdown (void);
+
 
 class StMemory
 {
@@ -59,17 +64,44 @@ class StMemoryMapper
 		const void*	fMemory;
 };
 
+template <class T>
+class StCanonical
+{
+	public:
+		StCanonical (T& obj) :
+			fObject (obj)
+		{
+			Canonical (fObject);
+		}
+
+		~StCanonical ()
+		{
+			Canonical (fObject);
+		}
+
+	private:
+		T&	fObject;
+};
+
 class StWordSwapper
 {
 	public:
-		StWordSwapper (void* memory, long length);
-		~StWordSwapper (void);
+		StWordSwapper (void* memory, long length) :
+			fMemory (memory),
+			fLength (length)
+		{
+			::ByteswapWords (fMemory, fLength);
+		}
+
+		~StWordSwapper ()
+		{
+			::ByteswapWords (fMemory, fLength);
+		}
 
 	private:
 		void*	fMemory;
 		long	fLength;
 };
-
 
 // ================================================================================
 //
@@ -102,77 +134,99 @@ class EmValueChanger
 		T						fOrigValue;
 };
 
-void		ValidateFormObjects		(FormPtr frm);
-void		CollectOKObjects		(FormPtr frm, vector<UInt16>& okObjects);
 
-Bool		PinRectInRect			(EmRect& inner, const EmRect& outer);
+void LoadAnyFiles (const EmFileRefList& fileList);
 
-const Bool	kAllDatabases		= false;
-const Bool	kApplicationsOnly	= true;
+void CollectOKObjects(FormPtr frm, vector<UInt16>& okObjects, Bool reportErrors);
 
-void		GetDatabases			(DatabaseInfoList& appList, Bool applicationsOnly);
+Bool PinRectInRect (EmRect& inner, const EmRect& outer);
 
-Bool		IsExecutable			(UInt32 dbType, UInt32 dbCreator, UInt16 dbAttrs);
-Bool		IsVisible				(UInt32 dbType, UInt32 dbCreator, UInt16 dbAttrs);
-void 		GetLoadableFileList 	(string directoryName, EmFileRefList& fileList);
-void		GetFileContents			(const EmFileRef& file, Chunk& contents);
+Bool	IsBound				(void);
+Bool	IsBoundPartially	(void);
+Bool	IsBoundFully		(void);
 
-void		InstallCalibrationInfo	(void);
-void		ResetCalibrationInfo	(void);
-void		ResetClocks				(void);
-void		SetHotSyncUserName		(const char*);
+// Inline function to turn a trap word (0xA###) into an index into the
+// trap table.  The method used here (masking off the uppermost nybble
+// instead of, say, subtracting sysTrapBase) matches the ROM.
 
-void		SeparateList			(StringList& stringList, string str, char delimiter);
+inline uint16 SysTrapIndex (uint16 trapWord)
+{
+	return (uint16) (trapWord & ~0xF000);
+}
 
-void		RunLengthEncode			(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
-void		RunLengthDecode			(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
-long		RunLengthWorstSize		(long);
+inline uint16 LibTrapIndex (uint16 trapWord)
+{
+	return (uint16) (SysTrapIndex (trapWord) - SysTrapIndex (sysLibTrapBase));
+}
 
-void		GzipEncode				(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
-void		GzipDecode				(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
-long		GzipWorstSize			(long);
+inline Bool IsSystemTrap (uint16 trapWord)
+{
+	return SysTrapIndex (trapWord) < SysTrapIndex (sysLibTrapBase);
+}
 
-int			CountBits				(uint32 v);
-inline int	CountBits				(uint16 v) { return CountBits ((uint32) (uint16) v); }
-inline int	CountBits				(uint8 v) { return CountBits ((uint32) (uint8) v); }
+inline Bool IsLibraryTrap (uint16 trapWord)
+{
+	return !IsSystemTrap (trapWord);
+}
 
-inline int	CountBits				(int32 v) { return CountBits ((uint32) (uint32) v); }
-inline int	CountBits				(int16 v) { return CountBits ((uint32) (uint16) v); }
-inline int	CountBits				(int8 v) { return CountBits ((uint32) (uint8) v); }
+const Bool	kAllDatabases = false;
+const Bool	kApplicationsOnly = true;
 
-inline Bool	IsEven					(uint32 v) { return (v & 1) == 0; }
-inline Bool	IsOdd					(uint32 v) { return (v & 1) != 0; }
+void	GetDatabases			(DatabaseInfoList& appList, Bool applicationsOnly);
 
-uint32		NextPowerOf2			(uint32 x);
-uint32		DateToDays				(uint32 year, uint32 month, uint32 day);
+Bool	IsExecutable			(UInt32 dbType, UInt32 dbCreator, UInt16 dbAttrs);
+Bool	IsVisible				(UInt32 dbType, UInt32 dbCreator, UInt16 dbAttrs);
+void 	GetLoadableFileList 	(string directoryName, EmFileRefList& fileList);
+void	GetFileContents			(const EmFileRef& file, Chunk& contents);
 
-string		GetLibraryName			(uint16 refNum);
+void	InstallCalibrationInfo	(void);
+void	ResetCalibrationInfo	(void);
+void	ResetClocks				(void);
+void	SetHotSyncUserName		(const char*);
 
-Bool		GetSystemCallContext	(emuptr, SystemCallContext&);
+void	SeparateList			(StringList& stringList, string str, char delimiter);
 
-void		GetHostTime				(long* hour, long* min, long* sec);
-void		GetHostDate				(long* year, long* month, long* day);
+void	RunLengthEncode			(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
+void	RunLengthDecode			(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
+long	RunLengthWorstSize		(long);
 
-Bool		StartsWith				(const char* s, const char* pattern);
-Bool		EndsWith				(const char* s, const char* pattern);
-string		Strip					(const char* s, const char*, Bool leading, Bool trailing);
-string		Strip					(const string& s, const char*, Bool leading, Bool trailing);
-string		ReplaceString			(const string& source,
-									 const string& pattern,
-									 const string& replacement);
-void		FormatInteger			(char* dest, uint32 integer);
-string		FormatInteger			(uint32 integer);
-string		FormatElapsedTime		(uint32 mSecs);
-const char*	LaunchCmdToString		(UInt16 cmd);
-void		StackCrawlStrings		(const EmStackFrameList& stackCrawl,
-									 StringList& stackCrawlStrings);
-string		StackCrawlString 		(const EmStackFrameList& stackCrawl,
-									 long maxLen, Bool includeFrameSize,
-									 emuptr oldStackLow);
+void	GzipEncode				(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
+void	GzipDecode				(void** srcPP, void** dstPP, long srcBytes, long dstBytes);
+long	GzipWorstSize			(long);
+
+int		CountBits				(uint32 v);
+inline int		CountBits				(uint16 v) { return CountBits ((uint32) (uint16) v); }
+inline int		CountBits				(uint8 v) { return CountBits ((uint32) (uint8) v); }
+
+inline int		CountBits				(int32 v) { return CountBits ((uint32) (uint32) v); }
+inline int		CountBits				(int16 v) { return CountBits ((uint32) (uint16) v); }
+inline int		CountBits				(int8 v) { return CountBits ((uint32) (uint8) v); }
+
+
+uint32	NextPowerOf2			(uint32 x);
+uint32	DateToDays				(uint32 year, uint32 month, uint32 day);
+
+string	GetLibraryName			(uint16 refNum);
+
+Bool	GetSystemCallContext	(emuptr, SystemCallContext&);
+
+void	GetHostTime				(long* hour, long* min, long* sec);
+void	GetHostDate				(long* year, long* month, long* day);
+
+Bool		StartsWith			(const char* s, const char* pattern);
+Bool		EndsWith			(const char* s, const char* pattern);
+string		Strip				(const char* s, const char*, Bool leading, Bool trailing);
+string		Strip				(const string& s, const char*, Bool leading, Bool trailing);
+string		ReplaceString		(const string& source,
+								 const string& pattern,
+								 const string& replacement);
+void		FormatInteger		(char* dest, uint32 integer);
+const char*	LaunchCmdToString	(UInt16 cmd);
 
 typedef pair <RAMSizeType, string>	MemoryText;
 typedef vector <MemoryText>			MemoryTextList;
+void GetMemoryTextList (MemoryTextList& memoryList);
 
-void		GetMemoryTextList		(MemoryTextList& memoryList);
+void GenerateStackCrawl (EmStackFrameList& frameList);
 
 #endif	// _MISCELLANEOUS_H_

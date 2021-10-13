@@ -17,7 +17,6 @@
 #include "EmCPU68K.h"			// ProcessException, etc.
 #include "EmSession.h"			// gSession->Reset
 #include "Platform.h"			// AllocateMemory
-#include "UAE.h"				// MakeSR, uae_s32, etc.
 
 
 // ---------------------------------------------------------------------------
@@ -37,6 +36,7 @@ void Exception (int nr, emuptr /*oldpc*/)
 {
 	EmAssert (gCPU68K);
 
+    MakeSR();
 	gCPU68K->ProcessException ((ExceptionNumber) nr);
 }
 

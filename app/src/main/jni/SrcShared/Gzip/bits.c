@@ -94,10 +94,8 @@ int (*read_buf) OF((char *buf, unsigned size));
 /* ===========================================================================
  * Initialize the bit string routines.
  */
-void bi_init (file_t zipfile)
-#if 0
+void bi_init (zipfile)
     file_t zipfile; /* output zip file, NO_FILE for in-memory compression */
-#endif
 {
     zfile  = zipfile;
     bi_buf = 0;
@@ -120,11 +118,9 @@ void bi_init (file_t zipfile)
  * Send a value on a given number of bits.
  * IN assertion: length <= 16 and value fits in length bits.
  */
-void send_bits(int value, int length)
-#if 0
+void send_bits(value, length)
     int value;  /* value to send */
     int length; /* number of bits */
-#endif
 {
 #ifdef DEBUG
     Tracev((stderr," l %2d v %4x ", length, value));
@@ -151,11 +147,9 @@ void send_bits(int value, int length)
  * method would use a table)
  * IN assertion: 1 <= len <= 15
  */
-unsigned bi_reverse(unsigned code, int len)
-#if 0
+unsigned bi_reverse(code, len)
     unsigned code; /* the value to invert */
     int len;       /* its bit length */
-#endif
 {
     register unsigned res = 0;
     do {
@@ -186,12 +180,10 @@ void bi_windup()
  * Copy a stored block to the zip file, storing first the length and its
  * one's complement if requested.
  */
-void copy_block(char *buf, unsigned len, int header)
-#if 0
+void copy_block(buf, len, header)
     char     *buf;    /* the input data */
     unsigned len;     /* its length */
     int      header;  /* true if block header must be written */
-#endif
 {
     bi_windup();              /* align on byte boundary */
 

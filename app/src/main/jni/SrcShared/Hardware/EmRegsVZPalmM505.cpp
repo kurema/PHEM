@@ -50,7 +50,7 @@ void EmRegsVZPalmM505::SetSubBankHandlers (void)
 
 	// Now add standard/specialized handers for the defined registers.
 
-	this->SetHandler ((ReadFunction) &EmRegsVZPalmM505::StdRead,
+	this->SetHandler ((ReadFunction) &EmRegsVZ::StdRead,
 		(WriteFunction) &EmRegsVZPalmM505::portFSelectWrite,
 		addressof (portFSelect), sizeof (f68VZ328Regs.portFSelect));
 }

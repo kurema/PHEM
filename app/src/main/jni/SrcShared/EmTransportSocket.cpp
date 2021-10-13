@@ -35,14 +35,6 @@
 #include <arpa/inet.h>			// inet_addr
 #endif
 
-/* Update for GCC 4 */
-#include <stdlib.h>
-#include <string.h>
-
-#ifndef INADDR_NONE
-#define INADDR_NONE		0xffffffff
-#endif
-
 #define PRINTF	if (!LogSerial ()) ; else LogAppendMsg
 
 EmTransportSocket::OpenPortList	EmTransportSocket::fgOpenPorts;
@@ -58,77 +50,15 @@ EmTransportSocket::OpenPortList	EmTransportSocket::fgOpenPorts;
  *
  * RETURNED:	Nothing
  *
- * NOTES:		We used to only have a fDataSocket. Now, to allow for
- *				a listening socket to be opened before a connection is
- *				attempted, we need two sockets. Note that EmTransport
- *				Socket does not get its hands dirty with actual sockets.
- *				Thus, fDataListenSocket is not a socket in the traditional
- *				sense, and may be connected or not.
- *
  ***********************************************************************/
 
 EmTransportSocket::EmTransportSocket (void) :
 	fReadMutex (),
 	fReadBuffer (),
-	fDataConnectSocket (NULL),
-	fDataListenSocket (NULL),
+	fDataSocket (NULL),
 	fConfig (),
 	fCommEstablished (false)
 {
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSocket c'tor
- *
- * DESCRIPTION:	Constructor.  Initialize our data members.
- *
- * PARAMETERS:	desc - descriptor information used when opening
- *					the TCP port.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-EmTransportSocket::EmTransportSocket (const EmTransportDescriptor& desc) :
-	fReadMutex (),
-	fReadBuffer (),
-	fDataConnectSocket (NULL),
-	fDataListenSocket (NULL),
-	fConfig (),
-	fCommEstablished (false)
-{
-	ConfigSocket	config;
-
-	string				addr		= desc.GetSchemeSpecific ();
-	string::size_type	colonPos	= addr.find (':');
-	string::size_type	nonNumPos	= addr.find_first_not_of ("0123456789");
-
-	// If there's a colon, assume a fully-specified address.
-
-	if (colonPos != string::npos)
-	{
-		config.fTargetHost	= addr.substr (0, colonPos);
-		config.fTargetPort	= addr.substr (colonPos + 1);
-	}
-
-	// If there's no colon, look for numbers.  If the entire
-	// address is made up of numbers, assume it's a port number.
-
-	else if (nonNumPos == string::npos)
-	{
-		config.fTargetPort	= addr;
-	}
-
-	// Otherwise, assume it's a host address with no port.
-
-	else
-	{
-		config.fTargetHost	= addr;
-	}
-
-	fConfig = config;
 }
 
 
@@ -148,8 +78,7 @@ EmTransportSocket::EmTransportSocket (const EmTransportDescriptor& desc) :
 EmTransportSocket::EmTransportSocket (const ConfigSocket& config) :
 	fReadMutex (),
 	fReadBuffer (),
-	fDataConnectSocket (NULL),
-	fDataListenSocket (NULL),
+	fDataSocket (NULL),
 	fConfig (config),
 	fCommEstablished (false)
 {
@@ -170,7 +99,7 @@ EmTransportSocket::EmTransportSocket (const ConfigSocket& config) :
 
 EmTransportSocket::~EmTransportSocket (void)
 {
-	this->Close ();
+	Close ();
 }
 
 
@@ -184,17 +113,6 @@ EmTransportSocket::~EmTransportSocket (void)
  * PARAMETERS:	None
  *
  * RETURNED:	0 if no error.
- *
- * NOTES:		Implements the new method of opening a listening socket,
- *				then opening a connection socket. This avoids the problem
- *				where both machines might try to connect, fail, and then
- *				each fall back to listening. However, this approach does
- *				not work in localhost mode, for obvious (upon reflection)
- *				reasons: if you start listening, then shout, you are
- *				going to hear yourself (or in this case, you're going to
- *				drop your listening socket once your connecting socket
- *				tells you that it has connected, not knowing that you have
- *				connected to yourself).
  *
  ***********************************************************************/
 
@@ -210,92 +128,23 @@ ErrCode EmTransportSocket::Open (void)
 		return kError_CommOpen;
 	}
 
-	string registrationKey = "TCP:" + fConfig.fTargetHost + ":" + fConfig.fTargetPort;
+	string registrationKey = "TCP:" + fConfig.fTargetHost + ":" + fConfig.fTargetHost;
 	EmAssert (fgOpenPorts.find (registrationKey) == fgOpenPorts.end ());
 
-	ErrCode err;
+	ErrCode err= OpenCommPort (fConfig);
 
-	if (fConfig.fTargetHost != "localhost")
+	if (err)
 	{
-		err= OpenCommPortListen (fConfig);
-
-		if (err)
-		{
-			PRINTF ("EmTransportSocket::Open: comm port closed due to error %ld on listening attempt", err);
-			PRINTF ("EmTransportSocket::Open: closing listening socket");
-
-			err = CloseCommPortListen ();
-			fCommEstablished = false;
-
-			if (err)
-				PRINTF ("EmTransportSocket::Open: err = %ld when closing listen socket", err);
-		}
-		else if (fDataListenSocket->ConnectPending ())
-		{
-			PRINTF ("EmTransportSocket::Open: not attempting to connect due to a pending connection");
-		}
-		else
-		{
-			PRINTF ("EmTransportSocket::Open: listening socket opened properly");
-
-			// set to true here because we are listening properly; not affected by whether this
-			// next connect call fails
-			fCommEstablished = true;
-
-			err = OpenCommPortConnect (fConfig);
-		}
-
-		if (err == 0)
-		{
-			fCommEstablished = true;
-			fgOpenPorts[registrationKey] = this;
-
-			PRINTF ("EmTransportSocket::Open: successful connection, so closing listening socket");
-
-			err = CloseCommPortListen ();
-		}
-		else
-		{
-			PRINTF ("EmTransportSocket::Open: err = %ld on connect attempt", err);
-			PRINTF ("EmTransportSocket::Open: closing connect socket");
-
-			err = CloseCommPortConnect ();
-		}
+		err = CloseCommPort ();
 	}
 	else
 	{
-		PRINTF ("EmTransportSocket::Open: opening in localhost mode (old style)");
-
-		err = OpenCommPortConnect (fConfig);
-
-		if (err)
-		{
-			PRINTF ("EmTransportSocket::Open: err %ld in connect attempt", err);
-
-			err = CloseCommPortConnect ();
-
-			if (err)
-				PRINTF ("EmTransportSocket::Open: err %ld in connect socket close", err);
-
-			PRINTF ("EmTransportSocket::Open: falling back to listening");
-
-			err = OpenCommPortListen (fConfig);
-
-			PRINTF ("EmTransportSocket::Open: listening socket opened properly");
-		}
-
-		if (err == 0)
-		{
-			fCommEstablished = true;
-			fgOpenPorts [registrationKey] = this;
-		}
-		else
-		{
-			PRINTF ("EmTransportSocket::Open: error %ld on listening attempt, closing listen socket", err);
-
-			err = CloseCommPortListen ();
-		}
+		fCommEstablished = true;
+		fgOpenPorts[registrationKey] = this;
 	}
+
+	if (err)
+		PRINTF ("EmTransportSocket::Open: err = %ld", err);
 
 	return err;
 }
@@ -325,7 +174,7 @@ ErrCode EmTransportSocket::Close (void)
 
 	fCommEstablished = false;
 
-	string registrationKey = "TCP:" + fConfig.fTargetHost + ":" + fConfig.fTargetPort;
+	string registrationKey = "TCP:" + fConfig.fTargetHost + ":" + fConfig.fTargetHost;
 	
 	fgOpenPorts.erase (registrationKey);
 
@@ -392,31 +241,14 @@ ErrCode EmTransportSocket::Read (long& len, void* data)
 ErrCode EmTransportSocket::Write (long& len, const void* data)
 {
 	PRINTF ("EmTransportSocket::Write...");
-	
-	ErrCode err;
 
 	if (!fCommEstablished)
 	{
-		PRINTF ("...EmTransportSocket::Write: port not open, leaving");
+		PRINTF ("EmTransportSocket::Write: port not open, leaving");
 		return kError_CommNotOpen;
 	}
 
-	// Tracking errors here so that we can close the connection if some
-	// mechanism farther down the food chain (in CTCPSocket) finds out
-	// that the connection was dropped. This wasn't checked before, as
-	// errors were ignored in PutOutgoingData, explaining the many
-	// writes of 0 bytes (indicating a dropped connection) in log files.
-
-	err = PutOutgoingData (data, len);
-
-	if (err)
-	{
-		PRINTF ("...EmTransportSocket::Write: PutOutgoingData returned err %ld, closing connection", err);
-
-		this->Close ();
-
-		return kError_CommNotOpen;
-	}
+	PutOutgoingData (data, len);
 
 	if (LogSerialData ())
 		LogAppendData (data, len, "EmTransportSocket::Write: writing %ld bytes.", len);
@@ -481,41 +313,19 @@ Bool EmTransportSocket::CanWrite (void)
  *				of the former is not guaranteed to fetch all received
  *				and buffered bytes.
  *
- * PARAMETERS:	minBytes - try to buffer at least this many bytes.
- *					Return when we have this many bytes buffered, or
- *					until some small timeout has occurred.
+ * PARAMETERS:	None
  *
  * RETURNED:	Number of bytes that can be read.
  *
  ***********************************************************************/
 
-long EmTransportSocket::BytesInBuffer (long /*minBytes*/)
+long EmTransportSocket::BytesInBuffer (void)
 {
 	if (!fCommEstablished)
 		return 0;
 
-	return this->IncomingDataSize ();
+	return IncomingDataSize ();
 }
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSocket::GetSpecificName
- *
- * DESCRIPTION:	Returns the port name, or host address, depending on the
- *				transport in question.
- *
- * PARAMETERS:	
- *
- * RETURNED:	string, appropriate to the transport in question.
- *
- ***********************************************************************/
- 
- string EmTransportSocket::GetSpecificName (void)
- {
- 	string returnString = fConfig.fTargetHost + ":" + fConfig.fTargetPort;
- 	return returnString;
- }
 
 
 /***********************************************************************
@@ -537,7 +347,7 @@ long EmTransportSocket::BytesInBuffer (long /*minBytes*/)
 
 EmTransportSocket* EmTransportSocket::GetTransport (const ConfigSocket& config)
 {
-	string registrationKey = "TCP:" + config.fTargetHost + ":" + config.fTargetPort;
+	string registrationKey = "TCP:" + config.fTargetHost + ":" + config.fTargetHost;
 	OpenPortList::iterator	iter = fgOpenPorts.find (registrationKey);
 
 	if (iter == fgOpenPorts.end ())
@@ -549,7 +359,7 @@ EmTransportSocket* EmTransportSocket::GetTransport (const ConfigSocket& config)
 
 /***********************************************************************
  *
- * FUNCTION:	EmTransportSocket::GetDescriptorList
+ * FUNCTION:	EmTransportSocket:: GetPortNameList
  *
  * DESCRIPTION:	Return the list of TCP ports on this computer.  Used
  *				to prepare a menu of TCP port choices.
@@ -560,55 +370,17 @@ EmTransportSocket* EmTransportSocket::GetTransport (const ConfigSocket& config)
  *
  ***********************************************************************/
 
-void EmTransportSocket::GetDescriptorList (EmTransportDescriptorList& descList)
+void EmTransportSocket:: GetPortNameList (PortNameList& nameList)
 {
-	descList.clear ();
-
-	descList.push_back (EmTransportDescriptor (kTransportSocket));
+	string portName = "TCP";
+		
+	nameList.push_back (portName);
 }
 
 
 /***********************************************************************
  *
- * FUNCTION:	EmTransportSocket::OpenCommPortConnect
- *
- * DESCRIPTION:	Open the TCP port.
- *
- * PARAMETERS:	config - data block describing which port to use.
- *
- * RETURNED:	0 if no error.
- *
- * NOTES:		Implements a subset of OpenCommPort's functionality.
- *				In particular, it tries to connect, then returns.
- *				OpenCommPortListen implements the listening behavior.
- *				This change was made so that control over the behavior
- *				(whether connect first or listen first) could be
- *				in Open.
- *
- ***********************************************************************/
-
-ErrCode EmTransportSocket::OpenCommPortConnect (const EmTransportSocket::ConfigSocket& config)
-{
-	ErrCode err;
-
-	if (fDataConnectSocket)
-		return errNone;
-
-	fDataConnectSocket = new CTCPClientSocket (EmTransportSocket::EventCallBack,
-		config.fTargetHost, atoi (config.fTargetPort.c_str ()), this);
-
-	// Try establishing a connection to some peer already waiting on the
-	// target host, on the target port
-
-	err = fDataConnectSocket->Open ();
-
-	return err;
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSocket::OpenCommPortListen
+ * FUNCTION:	EmTransportSocket::OpenCommPort
  *
  * DESCRIPTION:	Open the TCP port.
  *
@@ -618,19 +390,23 @@ ErrCode EmTransportSocket::OpenCommPortConnect (const EmTransportSocket::ConfigS
  *
  ***********************************************************************/
 
-ErrCode EmTransportSocket::OpenCommPortListen (const EmTransportSocket::ConfigSocket& config)
+ErrCode EmTransportSocket::OpenCommPort (const EmTransportSocket::ConfigSocket& config)
 {
 	ErrCode err;
+	
+	EmAssert (fDataSocket == NULL);
 
-	if (fDataListenSocket)
-		return errNone;
+	fDataSocket = new CTCPClientSocket (EmTransportSocket::EventCallBack, config.fTargetHost, config.fTargetPort, this);
 
-	fDataListenSocket = new CTCPClientSocket (EmTransportSocket::EventCallBack,
-		config.fTargetHost, atoi (config.fTargetPort.c_str ()), this);
+	// Try establishing a connection to some peer already waiting on the target host, on the target port
+	err = fDataSocket->Open ();
 
-	// Fall into server mode and start waiting
-
-	err = fDataListenSocket->OpenInServerMode ();
+	// If no connection can be established
+	if (err)
+	{
+		// Fall into server mode and start waiting
+		err = fDataSocket->OpenInServerMode ();
+	}
 
 	return err;
 }
@@ -681,7 +457,6 @@ void EmTransportSocket::EventCallBack (CSocket* s, int event)
 	}
 }
 
-
 /***********************************************************************
  *
  * FUNCTION:	EmTransportSocket::CloseCommPort
@@ -696,71 +471,9 @@ void EmTransportSocket::EventCallBack (CSocket* s, int event)
 
 ErrCode EmTransportSocket::CloseCommPort (void)
 {
-	// Must close each socket separately.
-
-	if (fDataListenSocket)
-	{
-		fDataListenSocket->Close ();
-		fDataListenSocket->Delete ();
-		fDataListenSocket = NULL;
-	}
-
-	if (fDataConnectSocket)
-	{
-		fDataConnectSocket->Close ();
-		fDataConnectSocket->Delete ();
-		fDataConnectSocket = NULL;
-	}
-
-	return errNone;
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSocket::CloseCommPortConnect
- *
- * DESCRIPTION:	Close the comm port.
- *
- * PARAMETERS:	None.
- *
- * RETURNED:	0 if no error.
- *
- ***********************************************************************/
-
-ErrCode EmTransportSocket::CloseCommPortConnect (void)
-{
-	if (fDataConnectSocket)
-	{
-		fDataConnectSocket->Close ();
-		fDataConnectSocket->Delete ();
-		fDataConnectSocket = NULL;
-	}
-
-	return errNone;
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSocket::CloseCommPortListen
- *
- * DESCRIPTION:	Close the comm port.
- *
- * PARAMETERS:	None.
- *
- * RETURNED:	0 if no error.
- *
- ***********************************************************************/
-
-ErrCode EmTransportSocket::CloseCommPortListen (void)
-{
-	if (fDataListenSocket)
-	{
-		fDataListenSocket->Close ();
-		fDataListenSocket->Delete ();
-		fDataListenSocket = NULL;
-	}
+	fDataSocket->Close ();
+	fDataSocket->Delete ();
+	fDataSocket = 0;
 
 	return errNone;
 }
@@ -859,25 +572,14 @@ long EmTransportSocket::IncomingDataSize (void)
  *
  * RETURNED:	Nothing
  *
- * NOTES:		See the caveat in the constructor's comments about treating
- *				these "sockets" as real sockets. The actual control over
- *				sockets is down a level in CTCPSocket; thus, the listening
- *				socket at this level is, logically, where data should be
- *				written to. The connect socket is tried first, as the
- *				listening socket is closed on a successful connection.
- *
  ***********************************************************************/
 
-ErrCode EmTransportSocket::PutOutgoingData	(const void* data, long& len)
+void EmTransportSocket::PutOutgoingData	(const void* data, long& len)
 {
-	ErrCode err = kError_CommNotOpen;
+	if (len == 0)
+		return;
 
-	if (fDataListenSocket)
-		err = fDataListenSocket->Write (data, len, &len);
-	if (fDataConnectSocket)
-		err = fDataConnectSocket->Write (data, len, &len);
-
-	return err;
+	fDataSocket->Write (data, len, &len);
 }
 
 
@@ -994,8 +696,8 @@ enum { kSocketState_Unconnected, kSocketState_Listening, kSocketState_Connected 
 CTCPClientSocket::CTCPClientSocket (EventCallback fn, string targetHost, int targetPort, EmTransportSocket* transport) :
 	CTCPSocket (fn, targetPort)
 {
-	fTargetHost = targetHost;
-	fTransport = transport;
+		fTargetHost = targetHost;
+		fTransport = transport;
 }
 
 
@@ -1014,7 +716,6 @@ CTCPClientSocket::CTCPClientSocket (EventCallback fn, string targetHost, int tar
 CTCPClientSocket::~CTCPClientSocket ()
 {
 }
-
 
 /***********************************************************************
  *
@@ -1056,18 +757,12 @@ ErrCode CTCPClientSocket::Open (void)
 		fSocketState = kSocketState_Connected;
 		return errNone;
 	}
-	// if the connection was unsuccessful, this should be logged as well
-	else
-	{
-		PRINTF ("...unable to connect: %d", result);
-	}
 
 	closesocket (fConnectedSocket);
 	fConnectedSocket = INVALID_SOCKET;
 
 	return this->ErrorOccurred ();
 }
-
 
 /***********************************************************************
  *
@@ -1086,7 +781,7 @@ ErrCode CTCPClientSocket::OpenInServerMode (void)
 {
 	int 		result;
 	sockaddr	addr;
-
+	
 	fListeningSocket = this->NewSocket ();
 	if (fListeningSocket == INVALID_SOCKET)
 	{
@@ -1146,7 +841,6 @@ sockaddr* CTCPClientSocket::FillLocalAddress (sockaddr* addr)
 	return addr;
 }
 
-
 /***********************************************************************
  *
  * FUNCTION:	CTCPClientSocket::GetOwner
@@ -1164,7 +858,6 @@ EmTransportSocket* CTCPClientSocket::GetOwner (void)
 {
 	return fTransport;
 }
-
 
 /***********************************************************************
  *
@@ -1187,9 +880,8 @@ sockaddr* CTCPClientSocket::FillAddress (sockaddr* addr)
 	sockaddr_in*	addr_in = (sockaddr_in*) addr;
 	const char*		name = fTargetHost.c_str ();
 	unsigned long ip;
-
+	
 	// Check for common "localhost" case in order to avoid a name lookup on the Mac
-
 	if (!_stricmp(name,"localhost"))
 	{
 		ip = htonl(INADDR_LOOPBACK);
@@ -1198,11 +890,11 @@ sockaddr* CTCPClientSocket::FillAddress (sockaddr* addr)
 	{
 		// Try decoding a dotted ip address string
 		ip = inet_addr(name);
-
+	
 		if (ip == INADDR_NONE)
 		{
 			hostent* entry;
-
+		
 			// Perform a DNS lookup
 			entry = gethostbyname(name);
 

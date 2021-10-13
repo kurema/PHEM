@@ -31,18 +31,27 @@ void	Platform_DisposeMemory	(void* p);
 
 	// Do all the rest of this for C++ studs.
 
-#include "EmStructs.h"			// ByteList
+#include "EmDevice.h"			// EmDevice
 #include "EmTypes.h"			// StrCode
-#include "EmPatchIf.h"			// CallROMType
+#include "TrapPatches.h"		// CallROMType
 
+#ifdef SONY_ROM
+#include "EmStructs.h"
+#endif
+
+class Chunk;
 class ChunkFile;
+class CPU;
 class CSocket;
 class EmFileRef;
 class EmRect;
-class SessionFile;
 class StMemory;
+struct Configuration;
 
 // Globals
+
+extern unsigned long	gPseudoTickcount;
+extern Bool 			gEnableSounds;		// accessed by CPU_setsounds
 
 int _stricmp(const char *s1, const char *s2);
 int _strnicmp(const char *s1, const char *s2, int n);
@@ -55,11 +64,11 @@ class Platform
 {
 	public:
 
-		static void 			Initialize				(void);
-		static void 			Reset					(void);
-		static void 			Save					(SessionFile&);
-		static void 			Load					(SessionFile&);
-		static void 			Dispose 				(void);
+		static void 			Initialize			(void);
+		static void 			Reset				(void);
+		static void 			Save				(SessionFile&);
+		static void 			Load				(SessionFile&);
+		static void 			Dispose 			(void);
 
 	// Resource-related functions
 
@@ -69,19 +78,37 @@ class Platform
 	
 		static string			GetShortVersionString	(void);
 
+		static void				BindPoser				(Bool fullSave, const EmFileRef& dest);
+
+		static Bool 			ROMResourcePresent		(void);
+		static Bool 			GetROMResource			(Chunk& rom);
+
+		static Bool 			PSFResourcePresent		(void);
+		static Bool 			GetPSFResource			(Chunk& psf);
+
+		static Bool 			ConfigResourcePresent	(void);
+		static Bool 			GetConfigResource		(Chunk& config);
+
+		static Bool 			SkinfoResourcePresent	(void);
+		static Bool 			GetSkinfoResource		(Chunk& config);
+
+		static Bool 			Skin1xResourcePresent	(void);
+		static Bool 			GetSkin1xResource		(Chunk& config);
+
+		static Bool 			Skin2xResourcePresent	(void);
+		static Bool 			GetSkin2xResource		(Chunk& config);
+
+		static EmDevice			GetBoundDevice			(void);
+		static RAMSizeType		GetBoundRAMSize			(void);
+
+#ifdef SONY_ROM
+		static MSSizeType		GetBoundMSSize			(void);
+#endif
+
 	// Clipboard-related functions
 
-		static void				CopyToClipboard			(const ByteList& palmChars,
-														 const ByteList& hostChars);
-		static void				CopyFromClipboard		(ByteList& palmChars,
-														 ByteList& hostChars);
-
-		static uint16			RemapHostChar			(uint8 hostEncoding, uint8 deviceEncoding, uint16 hostChar);
-
-		static void				RemapHostToPalmChars	(const ByteList& hostChars,
-														 ByteList& palmChars);
-		static void				RemapPalmToHostChars	(const ByteList& palmChars,
-														 ByteList& hostChars);
+		static void				CopyToClipboard			(const void* data, uint16 length);
+		static void				CopyFromClipboard		(Chunk& data);
 
 	// Time-related functions
 
@@ -96,16 +123,31 @@ class Platform
 
 		static void 			ViewDrawLine			(int xStart, int yStart, int xEnd, int yEnd);
 		static void 			ViewDrawPixel			(int xPos, int yPos);
+		static void 			SaveScreen				(const EmFileRef& fileRef);
+
+	// Session-reated functions
+
+			// These two functions are specific to the Drag And Drop
+			// facility.  They should eventually get rolled into some
+			// other facility (like being merged with the Startup stuff).
+		static ErrCode			CreateSession			(void);
+		static ErrCode			OpenSession				(void);
+
+	// "Gremlin Control Window"
+
+		static void 			GCW_Open				(void);
+		static void 			GCW_Close				(void);
 
 	// Sound functions
 
 		static CallROMType		SndDoCmd				(SndCommandType&);
 		static void				StopSound				(void);
-		static void				Beep					(void);
 
 	// Whatever....
 	
 		static Bool				PinToScreen				(EmRect&);
+
+		static Bool				QueryNewDocument		(Configuration& cfg);
 
 		static void 			ToHostEOL				(StMemory& dest, long& destLen,
 														 const char* src, long srcLen);
@@ -160,7 +202,7 @@ class Platform
 	// fl::show by NULL-ing out the command line options it doesn't know about,
 	// it will later crash when trying to call strlen(NULL).
 
-		static Bool				CollectOptions			(int argc, char** argv, int& i, int (*cb)(int, char**, int&));
+		static Bool				CollectOptions			(int argc, char** argv, int (*cb)(int, char**, int&));
 		static void				PrintHelp				(void);
 
 		static void 			Debugger				(const char* = NULL);

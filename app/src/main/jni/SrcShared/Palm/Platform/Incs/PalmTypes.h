@@ -41,9 +41,6 @@
 #if defined(__GNUC__) && defined(__UNIX__)		// used to be in <BuildRules.h>
 	// Ensure that structure elements are 16-bit aligned
 	// Other [host] development platforms may need this as well...
-#ifndef PUBLIC_STUFF_STRIPPED
-	// DOLATER - Do NOT remove without talking to TLW first!!
-#endif // PUBLIC_STUFF_STRIPPED
 	#pragma pack(2)
 #endif
 
@@ -289,9 +286,6 @@ typedef Int32 (*ProcPtr)();
 #define sysDbgTrapNum					8		// For compiled breakpoints			
 #define sysDispatchTrapNum				15		// Trap dispatcher
 
-#ifndef PUBLIC_STUFF_STRIPPED
-/* DOLATER:jwm: @@@ move us to CoreTraps.h */
-#endif // PUBLIC_STUFF_STRIPPED
 
 #define SYS_TRAP(trapNum)  _SYSTEM_API(_CALL)(_SYSTEM_TABLE, trapNum)
 	

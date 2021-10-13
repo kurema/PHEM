@@ -17,7 +17,6 @@
 #include "EmErrCodes.h"			// kError_CommOpen
 #include "Logging.h"			// LogSerial
 
-#include "PHEMNativeIF.h"
 
 EmTransportSerial::OpenPortList	EmTransportSerial::fgOpenPorts;
 
@@ -42,35 +41,6 @@ EmTransportSerial::EmTransportSerial (void) :
 	fCommEstablished (false)
 {
 	this->HostConstruct ();
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSerial c'tor
- *
- * DESCRIPTION:	Constructor.  Initialize our data members.
- *
- * PARAMETERS:	desc - descriptor information used when opening
- *					the serial port.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-EmTransportSerial::EmTransportSerial (const EmTransportDescriptor& desc) :
-	fHost (NULL),
-	fConfig (),
-	fCommEstablished (false)
-{
-	ConfigSerial	config;
-
-	config.fPort = desc.GetSchemeSpecific ();
-        PHEM_Log_Msg("Creating serial transport:");
-        PHEM_Log_Msg(config.fPort.c_str());
-
-	this->HostConstruct ();
-	this->SetConfig (config);
 }
 
 
@@ -138,14 +108,9 @@ ErrCode EmTransportSerial::Open (void)
 
 	if (fCommEstablished)
 	{
-          PHEM_Log_Msg("Serial transport already open:");
-          PHEM_Log_Msg(fConfig.fPort.c_str());
 		PRINTF ("EmTransportSerial::Open: Serial port already open...leaving...");
 		return kError_CommOpen;
 	}
-
-        PHEM_Log_Msg("Opening serial transport:");
-        PHEM_Log_Msg(fConfig.fPort.c_str());
 
 	EmAssert (fgOpenPorts.find (fConfig.fPort) == fgOpenPorts.end ());
 
@@ -156,22 +121,16 @@ ErrCode EmTransportSerial::Open (void)
 
 	if (err)
 	{
-           PHEM_Log_Msg("Error opening serial transport:");
-           PHEM_Log_Place(err);
 		this->HostClose ();
 	}
 	else
 	{
-           PHEM_Log_Msg("Adding serial transport to list.");
 		fCommEstablished = true;
 		fgOpenPorts[fConfig.fPort] = this;
 	}
 
-	if (err) {
-           PHEM_Log_Msg("Error opening serial transport:");
-           PHEM_Log_Place(err);
+	if (err)
 		PRINTF ("EmTransportSerial::Open: err = %ld", err);
-        }
 
 	return err;
 }
@@ -195,14 +154,10 @@ ErrCode EmTransportSerial::Close (void)
 
 	if (!fCommEstablished)
 	{
-          PHEM_Log_Msg("Serial transport already closed:");
-          PHEM_Log_Msg(fConfig.fPort.c_str());
 		PRINTF ("EmTransportSerial::Close: Serial port not open...leaving...");
 		return kError_CommNotOpen;
 	}
 
-        PHEM_Log_Msg("Closing serial transport:");
-        PHEM_Log_Msg(fConfig.fPort.c_str());
 	fCommEstablished = false;
 	fgOpenPorts.erase (fConfig.fPort);
 
@@ -347,40 +302,19 @@ Bool EmTransportSerial::CanWrite (void)
  *				of the former is not guaranteed to fetch all received
  *				and buffered bytes.
  *
- * PARAMETERS:	minBytes - try to buffer at least this many bytes.
- *					Return when we have this many bytes buffered, or
- *					until some small timeout has occurred.
+ * PARAMETERS:	None
  *
  * RETURNED:	Number of bytes that can be read.
  *
  ***********************************************************************/
 
-long EmTransportSerial::BytesInBuffer (long minBytes)
+long EmTransportSerial::BytesInBuffer (void)
 {
 	if (!fCommEstablished)
 		return 0;
 
-	return this->HostBytesInBuffer (minBytes);
+	return this->HostBytesInBuffer ();
 }
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSerial::GetSpecificName
- *
- * DESCRIPTION:	Returns the port name, or host address, depending on the
- *				transport in question.
- *
- * PARAMETERS:	
- *
- * RETURNED:	string, appropriate to the transport in question.
- *
- ***********************************************************************/
- 
- string EmTransportSerial::GetSpecificName (void)
- {
- 	return fConfig.fPort;
- }
 
 
 /***********************************************************************
@@ -446,96 +380,6 @@ void EmTransportSerial::GetConfig (ConfigSerial& config)
 
 /***********************************************************************
  *
- * FUNCTION:	EmTransportSerial::SetRTS
- *
- * DESCRIPTION:	.
- *
- * PARAMETERS:	.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-void EmTransportSerial::SetRTS (RTSControl state)
-{
-	this->HostSetRTS (state);
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSerial::SetDTR
- *
- * DESCRIPTION:	.
- *
- * PARAMETERS:	.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-void EmTransportSerial::SetDTR (Bool state)
-{
-	this->HostSetDTR (state);
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSerial::SetBreak
- *
- * DESCRIPTION:	.
- *
- * PARAMETERS:	.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-void EmTransportSerial::SetBreak (Bool state)
-{
-	this->HostSetBreak (state);
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSerial::GetCTS
- *
- * DESCRIPTION:	.
- *
- * PARAMETERS:	.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-Bool EmTransportSerial::GetCTS (void)
-{
-	return this->HostGetCTS ();
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmTransportSerial::GetDSR
- *
- * DESCRIPTION:	.
- *
- * PARAMETERS:	.
- *
- * RETURNED:	Nothing
- *
- ***********************************************************************/
-
-Bool EmTransportSerial::GetDSR (void)
-{
-	return this->HostGetDSR ();
-}
-
-
-/***********************************************************************
- *
  * FUNCTION:	EmTransportSerial::GetTransport
  *
  * DESCRIPTION:	Return any transport object currently using the port
@@ -553,26 +397,18 @@ Bool EmTransportSerial::GetDSR (void)
 
 EmTransportSerial* EmTransportSerial::GetTransport (const ConfigSerial& config)
 {
-        PHEM_Log_Msg("Getting transport.");
 	OpenPortList::iterator	iter = fgOpenPorts.find (config.fPort);
 
-        if (fgOpenPorts.size() > 0) {
-          PHEM_Log_Msg("Some port exists.");
-          PHEM_Log_Place(fgOpenPorts.size());
-        }
-	if (iter == fgOpenPorts.end ()) {
-          PHEM_Log_Msg("No transports.");
-	  return NULL;
-        }
+	if (iter == fgOpenPorts.end ())
+		return NULL;
 
-        PHEM_Log_Msg("Found one.");
 	return iter->second;
 }
 
 
 /***********************************************************************
  *
- * FUNCTION:	EmTransportSerial::GetDescriptorList
+ * FUNCTION:	EmTransportSerial:: GetPortNameList
  *
  * DESCRIPTION:	Return the list of serial ports on this computer.  Used
  *				to prepare a menu of serial port choices.
@@ -583,25 +419,15 @@ EmTransportSerial* EmTransportSerial::GetTransport (const ConfigSerial& config)
  *
  ***********************************************************************/
 
-void EmTransportSerial::GetDescriptorList (EmTransportDescriptorList& descList)
+void EmTransportSerial:: GetPortNameList (PortNameList& nameList)
 {
-	PortNameList	portList;
-	HostGetPortNameList (portList);
-
-	descList.clear ();
-
-	PortNameList::iterator	iter = portList.begin ();
-	while (iter != portList.end ())
-	{
-		descList.push_back (EmTransportDescriptor (kTransportSerial, *iter));
-		++iter;
-	}
+	HostGetSerialPortNameList (nameList);
 }
 
 
 /***********************************************************************
  *
- * FUNCTION:	EmTransportSerial::GetSerialBaudList
+ * FUNCTION:	EmTransportSerial:: GetSerialBaudList
  *
  * DESCRIPTION:	Return the list of baud rates support by this computer.
  *				Used to prepare a menu of baud rate choices.
@@ -612,7 +438,7 @@ void EmTransportSerial::GetDescriptorList (EmTransportDescriptorList& descList)
  *
  ***********************************************************************/
 
-void EmTransportSerial::GetSerialBaudList (BaudList& baudList)
+void EmTransportSerial:: GetSerialBaudList (BaudList& baudList)
 {
 	HostGetSerialBaudList (baudList);
 }

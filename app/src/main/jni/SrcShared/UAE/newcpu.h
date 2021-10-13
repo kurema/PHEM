@@ -66,7 +66,7 @@ extern unsigned long op_illg (uae_u32) REGPARAM;
 
 typedef char flagtype;
 
-typedef struct regstruct
+extern struct regstruct
 {
     uae_u32 regs[16];
     uaecptr  usp,isp,msp;
@@ -99,25 +99,7 @@ typedef struct regstruct
      * The way this is implemented now seems like a good compromise.
      */
     uae_u32 prefetch;
-} regstruct;
-
-#ifndef __ECM_DYNAMIC_PATCH
-
-extern regstruct regs;
-extern regstruct lastint_regs;
-
-#define gRegs regs
-#define gLastint_regs lastint_regs
-
-#else //__ECM_DYNAMIC_PATCH
-
-extern regstruct *gDynRegsP;
-
-#define gRegs (*gDynRegsP)
-
-#endif //__ECM_DYNAMIC_PATCH
-
-
+} regs, lastint_regs;
 
 #define m68k_dreg(r,num) ((r).regs[(num)])
 #define m68k_areg(r,num) (((r).regs + 8)[(num)])

@@ -22,7 +22,7 @@
 class EmRegsCFMemCard : public EmRegs
 {
 	public:
-					EmRegsCFMemCard				(CFBusManager * fCFBusManager);
+					EmRegsCFMemCard				(void);
 	 virtual			~EmRegsCFMemCard				(void);
 
 		// EmRegs overrides
@@ -52,7 +52,6 @@ private:
 	EmRegsCFTuple 		Tuple;
 	EmRegsCFConfig		Config;
 	EmRegsCFReset 		CFReset;
-	CFBusManager * fBusMgr;
 };
 
 #endif	/* EmTRGCF_h */

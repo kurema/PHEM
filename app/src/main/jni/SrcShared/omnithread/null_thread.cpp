@@ -163,10 +163,6 @@ omni_thread::init_t::init_t(void)
 {
 }
 
-omni_thread::init_t::~init_t(void)
-{
-}
-
 #if 0
 //
 // Wrapper for thread creation.

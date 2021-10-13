@@ -112,9 +112,6 @@ EmPointTempl<coord>::operator/ (const EmPointTempl<coord>& pt) const
 {
 	EmPointTempl<coord>	result;
 
-	EmAssert (pt.fX != 0);
-	EmAssert (pt.fY != 0);
-
 	result.fX = this->fX / pt.fX;
 	result.fY = this->fY / pt.fY;
 
@@ -139,9 +136,6 @@ template <class coord>
 EmPointTempl<coord>&
 EmPointTempl<coord>::operator/= (const EmPointTempl<coord>& pt)
 {
-	EmAssert (pt.fX != 0);
-	EmAssert (pt.fY != 0);
-
 	fX /= pt.fX;
 	fY /= pt.fY;
 
@@ -231,16 +225,9 @@ struct	VPoint			{ char	_[8]; };
 // Return another kind of point
 //
 	#undef FOR_POINT
-	#ifndef BROKEN_RETURN_CASTING
 	#define FOR_POINT(cls, size, x, y)		\
 		EmPoint::operator cls() const		\
 			{ size pt[2]; pt[x] = fX; pt[y] = fY; return *(cls*) pt; }
-	#else
-	#define FOR_POINT(cls, size, x, y)		\
-		EmPoint::operator cls() const		\
-			{ union {size pt[2]; cls c;} u;	\
-			  u.pt[x] = fX; u.pt[y] = fY; return u.c; }
-	#endif
 
 	POINT_LIST_XY_LONG
 	POINT_LIST_YX_LONG
@@ -321,3 +308,26 @@ void TestPoint()
 	}
 }
 #endif
+
+/*
+	Change History (most recent first):
+	
+		$Log: /Foundation/EmPoint.cpp $
+			
+			5     3/19/96 5:51p Keith
+			Updated file names.
+			
+			4     3/12/96 8:12p Keith
+			Added stdafx and DEBUG_NEW support.
+			
+			3     3/12/96 12:44p Keith
+			Removed Mac-only characters.
+			
+			2     3/04/96 9:07a Keith
+			Fixed conflicts between psuedo-types and real types.
+			
+			1     2/26/96 4:33 PM Keith
+			First checked in
+
+		<1>		11/27/95	kar		Started
+*/

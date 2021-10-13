@@ -22,8 +22,8 @@
 class EmException : public exception
 {
 	public:
-								EmException			(void) throw ();
-		virtual					~EmException		(void) throw ();
+								EmException			(void);
+		virtual					~EmException		(void);
 };
 
 
@@ -35,8 +35,8 @@ class EmException : public exception
 class EmExceptionTopLevelAction : public EmException
 {
 	public:
-								EmExceptionTopLevelAction	(void) throw ();
-		virtual					~EmExceptionTopLevelAction	(void) throw ();
+								EmExceptionTopLevelAction	(void);
+		virtual					~EmExceptionTopLevelAction	(void);
 
 		virtual void			DoAction			(void) = 0;
 };
@@ -47,8 +47,8 @@ class EmExceptionTopLevelAction : public EmException
 class EmExceptionEnterDebugger : public EmExceptionTopLevelAction
 {
 	public:
-								EmExceptionEnterDebugger	(void) throw ();
-		virtual					~EmExceptionEnterDebugger	(void) throw ();
+								EmExceptionEnterDebugger	(void);
+		virtual					~EmExceptionEnterDebugger	(void);
 
 		virtual void			DoAction			(void);
 };
@@ -59,8 +59,8 @@ class EmExceptionEnterDebugger : public EmExceptionTopLevelAction
 class EmExceptionReset : public EmExceptionTopLevelAction
 {
 	public:
-								EmExceptionReset	(EmResetType) throw ();
-		virtual					~EmExceptionReset	(void) throw ();
+								EmExceptionReset	(EmResetType);
+		virtual					~EmExceptionReset	(void);
 
 		virtual void			DoAction			(void);
 
@@ -68,7 +68,7 @@ class EmExceptionReset : public EmExceptionTopLevelAction
 		void					SetMessage			(const char* m)	{ fMessage = m; }
 		void					SetTrapWord			(uint16 tw)		{ fTrapWord = tw; }
 
-		virtual const char*		what				(void) const throw ();
+		virtual const char*		what				(void) const;
 
 		void					Display				(void) const;
 
@@ -86,8 +86,8 @@ class EmExceptionReset : public EmExceptionTopLevelAction
 class EmExceptionNextGremlin : public EmExceptionTopLevelAction
 {
 	public:
-								EmExceptionNextGremlin	(void) throw ();
-		virtual					~EmExceptionNextGremlin	(void) throw ();
+								EmExceptionNextGremlin	(void);
+		virtual					~EmExceptionNextGremlin	(void);
 
 		virtual void			DoAction			(void);
 };

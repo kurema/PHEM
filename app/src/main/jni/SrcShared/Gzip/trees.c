@@ -330,11 +330,9 @@ local void set_file_type  OF((void));
  * location of the internal file attribute (ascii/binary) and method
  * (DEFLATE/STORE).
  */
-void ct_init(ush *attr, int *methodp)
-#if 0
+void ct_init(attr, methodp)
     ush  *attr;   /* pointer to internal file attribute */
     int  *methodp; /* pointer to compression method */
-#endif
 {
     int n;        /* iterates over tree elements */
     int bits;     /* bit counter */
@@ -451,11 +449,9 @@ local void init_block()
  * when the heap property is re-established (each father smaller than its
  * two sons).
  */
-local void pqdownheap(ct_data near *tree, int k)
-#if 0
+local void pqdownheap(tree, k)
     ct_data near *tree;  /* the tree to restore */
     int k;               /* node to move down */
-#endif
 {
     int v = heap[k];
     int j = k << 1;  /* left son of k */
@@ -485,10 +481,8 @@ local void pqdownheap(ct_data near *tree, int k)
  *     The length opt_len is updated; static_len is also updated if stree is
  *     not null.
  */
-local void gen_bitlen(tree_desc near *desc)
-#if 0
+local void gen_bitlen(desc)
     tree_desc near *desc; /* the tree descriptor */
-#endif
 {
     ct_data near *tree  = desc->dyn_tree;
     int near *extra     = desc->extra_bits;
@@ -572,11 +566,9 @@ local void gen_bitlen(tree_desc near *desc)
  * OUT assertion: the field code is set for all tree elements of non
  *     zero code length.
  */
-local void gen_codes (ct_data near *tree, int max_code)
-#if 0
+local void gen_codes (tree, max_code)
     ct_data near *tree;        /* the tree to decorate */
     int max_code;              /* largest code with non zero frequency */
-#endif
 {
     ush next_code[MAX_BITS+1]; /* next code value for each bit length */
     ush code = 0;              /* running code value */
@@ -615,10 +607,8 @@ local void gen_codes (ct_data near *tree, int max_code)
  *     and corresponding code. The length opt_len is updated; static_len is
  *     also updated if stree is not null. The field max_code is set.
  */
-local void build_tree(tree_desc near *desc)
-#if 0
+local void build_tree(desc)
     tree_desc near *desc; /* the tree descriptor */
-#endif
 {
     ct_data near *tree   = desc->dyn_tree;
     ct_data near *stree  = desc->static_tree;
@@ -648,11 +638,11 @@ local void build_tree(tree_desc near *desc)
      * two codes of non zero frequency.
      */
     while (heap_len < 2) {
-        int new_t = heap[++heap_len] = (max_code < 2 ? ++max_code : 0);
-        tree[new_t].Freq = 1;
-        depth[new_t] = 0;
-        opt_len--; if (stree) static_len -= stree[new_t].Len;
-        /* new_t is 0 or 1 so it does not have extra bits */
+        int new = heap[++heap_len] = (max_code < 2 ? ++max_code : 0);
+        tree[new].Freq = 1;
+        depth[new] = 0;
+        opt_len--; if (stree) static_len -= stree[new].Len;
+        /* new is 0 or 1 so it does not have extra bits */
     }
     desc->max_code = max_code;
 
@@ -704,11 +694,9 @@ local void build_tree(tree_desc near *desc)
  * counts. (The contribution of the bit length codes will be added later
  * during the construction of bl_tree.)
  */
-local void scan_tree (ct_data near *tree, int max_code)
-#if 0
+local void scan_tree (tree, max_code)
     ct_data near *tree; /* the tree to be scanned */
     int max_code;       /* and its largest code of non zero frequency */
-#endif
 {
     int n;                     /* iterates over all tree elements */
     int prevlen = -1;          /* last emitted length */
@@ -750,11 +738,9 @@ local void scan_tree (ct_data near *tree, int max_code)
  * Send a literal or distance tree in compressed form, using the codes in
  * bl_tree.
  */
-local void send_tree (ct_data near *tree, int max_code)
-#if 0
+local void send_tree (tree, max_code)
     ct_data near *tree; /* the tree to be scanned */
     int max_code;       /* and its largest code of non zero frequency */
-#endif
 {
     int n;                     /* iterates over all tree elements */
     int prevlen = -1;          /* last emitted length */
@@ -835,10 +821,8 @@ local int build_bl_tree()
  * lengths of the bit length codes, the literal tree and the distance tree.
  * IN assertion: lcodes >= 257, dcodes >= 1, blcodes >= 4.
  */
-local void send_all_trees(int lcodes, int dcodes, int blcodes)
-#if 0
+local void send_all_trees(lcodes, dcodes, blcodes)
     int lcodes, dcodes, blcodes; /* number of codes for each tree */
-#endif
 {
     int rank;                    /* index in bl_order */
 
@@ -867,12 +851,10 @@ local void send_all_trees(int lcodes, int dcodes, int blcodes)
  * trees or store, and output the encoded block to the zip file. This function
  * returns the total compressed length for the file so far.
  */
-ulg flush_block(char *buf, ulg stored_len, int eof)
-#if 0
+ulg flush_block(buf, stored_len, eof)
     char *buf;        /* input block, or NULL if too old */
     ulg stored_len;   /* length of input block */
     int eof;          /* true if this is the last block for a file */
-#endif
 {
     ulg opt_lenb, static_lenb; /* opt_len and static_len in bytes */
     int max_blindex;  /* index of last bit length code of non zero freq */
@@ -974,11 +956,9 @@ ulg flush_block(char *buf, ulg stored_len, int eof)
  * Save the match info and tally the frequency counts. Return true if
  * the current block must be flushed.
  */
-int ct_tally (int dist, int lc)
-#if 0
+int ct_tally (dist, lc)
     int dist;  /* distance of matched string */
     int lc;    /* match length-MIN_MATCH or unmatched char (if dist==0) */
-#endif
 {
     l_buf[last_lit++] = (uch)lc;
     if (dist == 0) {
@@ -1029,11 +1009,9 @@ int ct_tally (int dist, int lc)
 /* ===========================================================================
  * Send the block data compressed using the given Huffman trees
  */
-local void compress_block(ct_data near *ltree, ct_data near *dtree)
-#if 0
+local void compress_block(ltree, dtree)
     ct_data near *ltree; /* literal tree */
     ct_data near *dtree; /* distance tree */
-#endif
 {
     unsigned dist;      /* distance of matched string */
     int lc;             /* match length or unmatched char (if dist == 0) */

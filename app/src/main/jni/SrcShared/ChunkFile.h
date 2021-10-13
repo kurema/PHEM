@@ -57,7 +57,6 @@ class ChunkFile
 		enum { kChunkNotFound = -1 };
 		long					FindChunk		(Tag tag);	// Returns chunk size
 
-		Bool					ReadChunk		(int index, Tag& tag, Chunk&);
 		Bool					ReadChunk		(Tag tag, Chunk&);
 		void					ReadChunk		(uint32 size, void* data);
 		Bool					ReadInt			(Tag tag, uint8&);
@@ -80,10 +79,10 @@ class ChunkFile
 		void					WriteString		(Tag tag, const char*);
 		void					WriteString		(Tag tag, const string&);
 
-		EmStream&				GetStream		(void) const;
+		EmStream&			GetStream		(void) const;
 
 	private:
-		EmStream&				fStream;
+		EmStream&			fStream;
 };
 
 
@@ -92,10 +91,7 @@ class Chunk
 	public:
 								Chunk			(void);
 								Chunk			(long inLength);
-								Chunk			(const Chunk&);
 								~Chunk			(void);
-
-		Chunk&					operator=		(const Chunk&);
 
 		void*					GetPointer		(void) const;
 		long					GetLength		(void) const;

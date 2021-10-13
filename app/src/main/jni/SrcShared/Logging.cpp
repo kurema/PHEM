@@ -14,31 +14,28 @@
 #include "EmCommon.h"
 #include "Logging.h"
 
-#include "EmApplication.h"		// gApplication, IsBound
-#include "EmMemory.h"			// EmMemGet32, EmMemGet16, EmMem_strcpy, EmMem_strncat
+#include "Byteswapping.h"		// Canonical
+#include "EmMemory.h"			// EmMemGet32, EmMemGet16, EmMemGet8
 #include "EmStreamFile.h"		// EmStreamFile
 #include "Hordes.h"				// Hordes::IsOn, Hordes::EventCounter
 #include "Platform.h"			// GetMilliseconds
 #include "PreferenceMgr.h"		// Preference<>
 #include "ROMStubs.h"			// FrmGetTitle, WinGetFirstWindow
 #include "Strings.r.h"			// kStr_LogFileSize
-#include "StringData.h"			// virtual key descriptions
+#include "UAE_Utils.h"			// uae_memcpy
 
-#include <ctype.h>				// isprint
-#include <cstddef>
 
-//#define LOG_TO_TRACE
-
-#ifdef LOG_TO_TRACE
-#include "TracerPlatform.h"
-#endif
-
-static LogStream*	gStdLog;
-uint8				gLogCache[kCachedPrefKeyDummy];
+LogStream*	gStdLog;
+uint8		gLogCache[kCachedPrefKeyDummy];
 
 
 LogStream*	LogGetStdLog (void)
 {
+	if (gStdLog == NULL)
+	{
+		gStdLog = new LogStream ("Log");
+	}
+
 	return gStdLog;
 }
 
@@ -46,7 +43,7 @@ LogStream*	LogGetStdLog (void)
 static void PrvPrefsChanged (PrefKeyType key, void*)
 {
 #define UPDATE_ONE_PREF(name)								\
-	if (::PrefKeysEqual (key, kPrefKey##name))				\
+	if (strcmp (key, kPrefKey##name) == 0)					\
 	{														\
 		Preference<uint8>	pref(kPrefKey##name, false);	\
 		gLogCache[kCachedPrefKey##name] = *pref;			\
@@ -54,7 +51,6 @@ static void PrvPrefsChanged (PrefKeyType key, void*)
 
 	FOR_EACH_SCALAR_PREF (UPDATE_ONE_PREF)
 }
-
 
 void LogStartup (void)
 {
@@ -65,7 +61,7 @@ void LogStartup (void)
 #define HARDCODE_ONE_PREF(name)	\
 	gLogCache[kCachedPrefKey##name] = 0;
 
-	if (gApplication->IsBound ())
+	if (::IsBound ())
 	{
 		FOR_EACH_SCALAR_PREF (HARDCODE_ONE_PREF)
 	}
@@ -73,22 +69,6 @@ void LogStartup (void)
 	{
 		FOR_EACH_SCALAR_PREF (REGISTER_ONE_PREF)
 	}
-
-	EmAssert (gStdLog == NULL);
-	gStdLog = new LogStream ("Log");
-}
-
-
-void LogShutdown (void)
-{
-#define UNREGISTER_ONE_PREF(name)	\
-	gPrefs->RemoveNotification (PrvPrefsChanged);
-
-	FOR_EACH_SCALAR_PREF (UNREGISTER_ONE_PREF)
-
-	EmAssert (gStdLog != NULL);
-	delete gStdLog;	// Dumps it to a file, too.
-	gStdLog = NULL;
 }
 
 
@@ -96,11 +76,11 @@ void LogShutdown (void)
 //		¥ CLASS LogStream
 // ---------------------------------------------------------------------------
 
-const long		kFindUniqueFile			= -1;
-const uint32	kInvalidTimestamp		= (uint32) -1;
-const int32		kInvalidGremlinCounter	= -2;
-const long		kEventTextMaxLen		= 255;
-
+const long		kDefaultBufferSize = 1 * 1024 * 1024L;
+const long		kFindUniqueFile = -1;
+const uint32	kInvalidTimestamp = (uint32) -1;
+const int32		kInvalidGremlinCounter = -2;
+const long		kEventTextMaxLen = 255;
 
 /***********************************************************************
  *
@@ -123,7 +103,6 @@ LogStream::LogStream (const char* baseName) :
 	fMutex (),
 	fInner (baseName)
 {
-	gPrefs->AddNotification (PrefChanged, kPrefKeyLogFileSize, this);
 }
 
 
@@ -142,8 +121,6 @@ LogStream::LogStream (const char* baseName) :
 
 LogStream::~LogStream (void)
 {
-	gPrefs->RemoveNotification (PrefChanged);
-
 	omni_mutex_lock lock (fMutex);
 	fInner.DumpToFile ();
 }
@@ -182,25 +159,6 @@ int LogStream::Printf (const char* fmt, ...)
 //	fInner.DumpToFile ();
 	return n;
 }
-
-
-int LogStream::PrintfNoTime (const char* fmt, ...)
-{
-	int		n;
-	va_list	arg;
-
-	omni_mutex_lock	lock (fMutex);
-
-	va_start (arg, fmt);
-
-	n = fInner.VPrintf (fmt, arg, false);
-
-	va_end (arg);
-
-//	fInner.DumpToFile ();
-	return n;
-}
-
 
 
 /***********************************************************************
@@ -399,27 +357,6 @@ void LogStream::DumpToFile (void)
 
 /***********************************************************************
  *
- * FUNCTION:	LogStream::PrefChanged
- *
- * DESCRIPTION:	Outputs and EOL to the log stream.
- *
- * PARAMETERS:	none
- *
- * RETURNED:	nothing
- *
- ***********************************************************************/
-
-void LogStream::PrefChanged (PrefKeyType, PrefRefCon data)
-{
-	Preference<long>	size (kPrefKeyLogFileSize);
-	((LogStream*) data)->SetLogSize (*size);
-}
-
-
-#pragma mark -
-
-/***********************************************************************
- *
  * FUNCTION:	LogStreamInner::LogStreamInner
  *
  * DESCRIPTION:	Constructor.
@@ -438,19 +375,13 @@ void LogStream::PrefChanged (PrefKeyType, PrefRefCon data)
 LogStreamInner::LogStreamInner (const char* baseName) :
 	fBaseName (baseName),
 	fFileIndex (kFindUniqueFile),
-	fBuffer (),
-	fBufferSize (0),
-	fDiscarded (false),
+	fBuffer (kDefaultBufferSize),
+	fBufferSize (kDefaultBufferSize),
+	fBufferOffset (0),
 	fLastGremlinEventCounter (kInvalidGremlinCounter),
 	fLastTimestampTime (kInvalidTimestamp),
 	fBaseTimestampTime (kInvalidTimestamp)
 {
-	Preference<long>	size (kPrefKeyLogFileSize);
-	fBufferSize = *size;
-
-#ifdef LOG_TO_TRACE
-	gTracer.InitOutputPort ();
-#endif
 }
 
 
@@ -469,11 +400,7 @@ LogStreamInner::LogStreamInner (const char* baseName) :
 
 LogStreamInner::~LogStreamInner (void)
 {
-#ifdef LOG_TO_TRACE
-	gTracer.CloseOutputPort ();
-#else
 	this->DumpToFile ();
-#endif
 }
 
 
@@ -555,7 +482,7 @@ int LogStreamInner::DumpHex (const void* data, long dataLen)
  *
  ***********************************************************************/
 
-int LogStreamInner::VPrintf (const char* fmt, va_list args, Bool timestamp)
+int LogStreamInner::VPrintf (const char* fmt, va_list args)
 {
 	char	buffer[2000];
 
@@ -567,7 +494,7 @@ int LogStreamInner::VPrintf (const char* fmt, va_list args, Bool timestamp)
 		Platform::Debugger();
 	}
 
-	this->Write (buffer, n, timestamp);
+	this->Write (buffer, n);
 
 	return n;
 }
@@ -585,11 +512,9 @@ int LogStreamInner::VPrintf (const char* fmt, va_list args, Bool timestamp)
  *
  ***********************************************************************/
 
-int LogStreamInner::Write (const void* buffer, long size, Bool timestamp)
+int LogStreamInner::Write (const void* buffer, long size)
 {
-	if (timestamp)
-		this->Timestamp ();
-
+	this->Timestamp ();
 	this->Append ((const char*) buffer, size);
 	this->NewLine ();
 
@@ -611,7 +536,7 @@ int LogStreamInner::Write (const void* buffer, long size, Bool timestamp)
 
 void LogStreamInner::Clear (void)
 {
-	fBuffer.clear ();
+	fBufferOffset = 0;
 	fBaseTimestampTime = kInvalidTimestamp;
 }
 
@@ -650,9 +575,15 @@ long LogStreamInner::GetLogSize (void)
 
 void LogStreamInner::SetLogSize (long size)
 {
-	fBufferSize = size;
+	char*	newBuffer = (char*) Platform::AllocateMemory (size);
 
-	this->TrimLeading ();
+	if (newBuffer)
+	{
+		fBuffer.Adopt (newBuffer);
+
+		fBufferOffset = 0;
+		fBufferSize = size;
+	}
 }
 
 
@@ -697,7 +628,7 @@ void LogStreamInner::EnsureNewFile (void)
 
 void LogStreamInner::DumpToFile (void)
 {
-	if (fBuffer.size () == 0)
+	if (fBufferOffset == 0)
 		return;
 
 	// Open the output stream.  No need to open it as a "text" file;
@@ -707,38 +638,33 @@ void LogStreamInner::DumpToFile (void)
 	EmStreamFile	stream (ref, kCreateOrEraseForUpdate,
 							kFileCreatorCodeWarrior, kFileTypeText);
 
-	// If we lost data off the front print a message saying that only
-	// the last portion of the text is begin saved/dumped.
+	// If we didn't wrap, do a simple dump: no header text saying
+	// that the text was truncated, and no attempt to dump the
+	// text in two parts.
 
-	if (fDiscarded)
+	if (fBufferOffset <= fBufferSize)
+	{
+		this->DumpToFile (stream, fBuffer, fBufferOffset);
+	}
+	else
+
+	// If we wrapped, print a message saying that only the last portion
+	// of the text is begin saved/dumped.
+
 	{
 		char	buffer[200];
 		string	templ = Platform::GetString (kStr_LogFileSize);
 		sprintf (buffer, templ.c_str (), fBufferSize / 1024L);
 		this->DumpToFile (stream, buffer, strlen (buffer));
-	}
 
-	// Dump the text.
+		// Dump the text.
 
-	const int	kChunkSize = 1 * 1024L * 1024L;
-	StMemory	chunk (kChunkSize);
-	ByteDeque::iterator	iter = fBuffer.begin ();
+		long	startingOffset = fBufferOffset % fBufferSize;
+		long	firstPart = fBufferSize - startingOffset;
+		long	secondPart = fBufferSize - firstPart;
 
-	while (iter != fBuffer.end ())
-	{
-		long	amtToCopy = kChunkSize;
-		long	amtLeft = fBuffer.end () - iter;
-
-		if (amtToCopy > amtLeft)
-		{
-			amtToCopy = amtLeft;
-		}
-
-		copy (iter, iter + amtToCopy, chunk.Get ());
-
-		this->DumpToFile (stream, chunk.Get (), amtToCopy);
-
-		iter += amtToCopy;
+		this->DumpToFile (stream, fBuffer + startingOffset, firstPart);
+		this->DumpToFile (stream, fBuffer, secondPart);
 	}
 }
 
@@ -794,37 +720,13 @@ EmFileRef LogStreamInner::CreateFileReference (void)
 	EmFileRef	result;
 	char		buffer[32];
 
-	// Figure out where to put the log file.  If a Gremlin Horde is
-	// running, then put the log file in the directory created to
-	// hold Gremlin output files.  Otherwise, use the directory the
-	// use specified in the preferences.  If no such directory was
-	// specified, use the Emulator's directory.
-
-	Preference<EmDirRef>	logDirPref (kPrefKeyLogDefaultDir);
-
-	EmDirRef	defaultDir	= *logDirPref;
-	EmDirRef	poserDir	= EmDirRef::GetEmulatorDirectory ();
-	EmDirRef	gremlinDir	= Hordes::GetGremlinDirectory ();
-	EmDirRef	logDir;
-
-	if (Hordes::IsOn ())
-	{
-		logDir = gremlinDir;
-	}
-	else if (defaultDir.Create (), defaultDir.Exists ())
-	{
-		logDir = defaultDir;
-	}
-	else
-	{
-		logDir = poserDir;
-	}
-
-	// If being forced to write to a new file, look for an unused
-	// file name.
+	EmDirRef	poserDir = EmDirRef::GetEmulatorDirectory ();
+	EmDirRef	gremlinDir = Hordes::GetGremlinDirectory ();
 
 	if (fFileIndex == kFindUniqueFile)
 	{
+		// Look for an unused file name.
+
 		fFileIndex = 0;
 
 		do
@@ -833,18 +735,21 @@ EmFileRef LogStreamInner::CreateFileReference (void)
 
 			sprintf (buffer, "%s_%04ld.txt", fBaseName, fFileIndex);
 
-			result = EmFileRef (logDir, buffer);
+			if (Hordes::IsOn())
+				result = EmFileRef (gremlinDir, buffer);
+			else
+				result = EmFileRef (poserDir, buffer);
 		}
 		while (result.IsSpecified () && result.Exists ());
 	}
-
-	// Otherwise, use the previously-used file name.
-
 	else
 	{
 		sprintf (buffer, "%s_%04ld.txt", fBaseName, fFileIndex);
 
-		result = EmFileRef (logDir, buffer);
+		if (Hordes::IsOn())
+			result = EmFileRef (gremlinDir, buffer);
+		else
+			result = EmFileRef (poserDir, buffer);
 	}
 
 	return result;
@@ -947,79 +852,58 @@ void LogStreamInner::NewLine (void)
 
 void LogStreamInner::Append (const char* buffer, long size)
 {
-	if (size != 0)
+	// Nothing to do if nothing to copy.
+
+	if (size == 0)
 	{
-#ifdef LOG_TO_TRACE
-		// Convert the text to a string
+	}
+	
+	// The amount we are copying in is larger than the size of our buffer;
+	// fill in the entire buffer with the last part of the incoming data.
 
-		string s (buffer, size);
+	else if (size >= fBufferSize)
+	{
+		memcpy (fBuffer, buffer + size - fBufferSize, fBufferSize);
+		fBufferOffset = fBufferSize;
+	}
 
-		// Write out the string, breaking it up manually at
-		// '\n's (OutputVT doesn't know that's what we're using
-		// for line endings).
+	// The amount we are copying is smaller than the size of the buffer.
+	// Copy as much of the new data into the buffer as possible before
+	// we reach the end.  If we reach the end, wrap around.
 
-		string::size_type	pos = s.find ('\n');
+	else
+	{
+		long	startingOffset = fBufferOffset % fBufferSize;
+		long	amtToEndOfBuffer = fBufferSize - startingOffset;
+		long	amtToCopy = size < amtToEndOfBuffer ? size : amtToEndOfBuffer;
 
-		while (pos != string::npos)
+		memcpy (fBuffer + startingOffset, buffer, amtToCopy);
+
+		// See if we wrapped.  If so, copy the rest of the data.
+
+		if (amtToCopy < size)
 		{
-			string	substr = s.substr (0, pos) + " ";
-			gTracer.OutputVTL (0, substr.c_str (), (va_list) NULL);
-
-			s = s.substr (pos + 1);
-			pos = s.find ('\n');
+			amtToCopy = size - amtToCopy;
+			memcpy (fBuffer, buffer + amtToEndOfBuffer, amtToCopy);
 		}
 
-		// If there's anything left, write it out without the CR.
+		fBufferOffset += size;
 
-		if (s.size () > 0)
+		// fBufferOffset is used to determine where to insert new characters.
+		// Don't let it get too big in order to avoid overflow problems (yes,
+		// we can overflow 32-bits when logging Gremlins events).
+		//
+		// The adjustment below is intended not only to preserve the starting
+		// insertion point, but also to remember that we have wrapped (that's
+		// what the "+ fBufferSize" is for).
+
+		if (fBufferOffset > 2 * fBufferSize)
 		{
-			gTracer.OutputVT (0, s.c_str (), (va_list) NULL);
+			fBufferOffset = (fBufferOffset % fBufferSize) + fBufferSize;
 		}
-#else
-		copy (buffer, buffer + size, back_inserter (fBuffer));
-
-		this->TrimLeading ();
-#endif
 	}
 }
 
-
-/***********************************************************************
- *
- * FUNCTION:	LogStreamInner::TrimLeading
- *
- * DESCRIPTION:	If the buffer has exceeded the maximum size we've
- *				established for it, drop any leading characters.
- *
- * PARAMETERS:	none.
- *
- * RETURNED:	nothing
- *
- ***********************************************************************/
-
-void LogStreamInner::TrimLeading (void)
-{
-	long	amtToDiscard = fBuffer.size () - fBufferSize;
-
-	if (amtToDiscard > 0)
-	{
-		fDiscarded = true;
-		fBuffer.erase (fBuffer.begin (), fBuffer.begin () + amtToDiscard);
-
-		// Keep chopping up to the next '\n' so that we don't leave
-		// any partial lines.
-
-		while (fBuffer.front () != '\n')
-		{
-			fBuffer.pop_front ();
-		}
-
-		fBuffer.pop_front ();
-	}
-}
-
-
-#pragma mark -
 
 // ---------------------------------------------------------------------------
 //		¥ StubEmFrmGetTitle
@@ -1033,11 +917,12 @@ static string StubEmFrmGetTitle (const FormPtr frm)
 	if (title)
 	{
 		char	buffer[256];
-		EmMem_strcpy (buffer, (emuptr) title);
+		uae_strcpy (buffer, (emuptr) title);
 		return string (buffer);
 	}
 
 	return string ("Untitled");
+
 }
 
 
@@ -1088,25 +973,83 @@ static void StubEmPrintFormID (WinHandle winHandle, char* desc, char* eventText)
 }
 
 
+// ---------------------------------------------------------------------------
+//		¥ VirtualKeyDescriptions
+// ---------------------------------------------------------------------------
+// Return a key description
 
-#define irObCloseChr 0x01FB			// to shut down Obex from background thread
+const char* kVirtualKeyDescriptions [] =
+{
+	" (vchrLowBattery)",				// 0x0101
+	" (vchrEnterDebugger)",				// 0x0102
+	" (vchrNextField)",					// 0x0103
+	" (vchrStartConsole)",				// 0x0104
+	" (vchrMenu)",						// 0x0105
+	" (vchrCommand)",					// 0x0106
+	" (vchrConfirm)",					// 0x0107
+	" (vchrLaunch)",					// 0x0108
+	" (vchrKeyboard)",					// 0x0109
+	" (vchrFind)",						// 0x010A
+	" (vchrCalc)",						// 0x010B
+	" (vchrPrevField)",					// 0x010C
+	" (vchrAlarm)",						// 0x010D
+	" (vchrRonamatic)",					// 0x010E
+	" (vchrGraffitiReference)",			// 0x010F
+	" (vchrKeyboardAlpha)",				// 0x0110
+	" (vchrKeyboardNumeric)",			// 0x0111
+	" (vchrLock)",						// 0x0112
+	" (vchrBacklight)",					// 0x0113
+	" (vchrAutoOff)",					// 0x0114
+	" (vchrExgTest)",					// 0x0115
+	" (vchrSendData)",					// 0x0116
+	" (vchrIrReceive)",					// 0x0117
+	" (vchrTsm1)",						// 0x0118
+	" (vchrTsm2)",						// 0x0119
+	" (vchrTsm3)",						// 0x011A
+	" (vchrTsm4)",						// 0x011B
+	" (vchrRadioCoverageOK)",			// 0x011C
+	" (vchrRadioCoverageFail)",			// 0x011D
+	" (vchrPowerOff)"					// 0x011E
+};
 
 
 
+#define irGotDataChr 0x01FC		// to initiate NotifyReceive
+#define irInitLibChr 0x01FD		// Used when intializing the library
+#define irSerialChr 0x01FE		// Switches to Rs232 line driver
+
+
+const char* kHardKeyDescriptions [] =
+{
+	" (irGotDataChr)",	// 0x01FC
+	" (irInitLibChr)",	// 0x01FD
+	" (irSerialChr)",	// 0x01FE
+	"",					// 0x01FF
+	"",					// 0x0200
+	"",					// 0x0201
+	"",					// 0x0202
+	"",					// 0x0203
+	" (vchrHard1)",		// 0x0204
+	" (vchrHard2)",
+	" (vchrHard3)",
+	" (vchrHard4)",
+	" (vchrHardPower)",
+	" (vchrHardCradle)",
+	" (vchrHardCradle2)",
+	" (vchrHardContrast)",
+	" (vchrHardAntenna)"
+};
 
 static const char* StubEmKeyDescription (Int16 key)
 {
-	unsigned int	index;
+	COMPILE_TIME_ASSERT (countof (kVirtualKeyDescriptions) == vchrPowerOff - vchrLowBattery + 1);
+	COMPILE_TIME_ASSERT (countof (kHardKeyDescriptions) == vchrHardAntenna - irGotDataChr + 1);
 
-	index = key - vchrLowBattery;
+	if (key >= vchrLowBattery && key <= vchrPowerOff)
+		return kVirtualKeyDescriptions [key - vchrLowBattery];
 
-	if (index < gVirtualKeyDescriptionsCount)
-		return kVirtualKeyDescriptions [index];
-
-	index = key - irObCloseChr;
-
-	if (index < gHardKeyDescriptionsCount)
-		return kHardKeyDescriptions [index];
+	if (key >= irGotDataChr && key <= vchrHardAntenna)
+		return kHardKeyDescriptions [key - irGotDataChr];
 
 	return "";
 }
@@ -1118,7 +1061,7 @@ static const char* StubEmKeyDescription (Int16 key)
 // Displays the passed event in the emulator's event tracewindow if it is
 // active.
 
-static Bool PrvGetEventText(const EventType* eventP, char* eventText)
+static Bool PrvGetEventText(EventPtr eventP, char* eventText)
 {
 	long curLen = strlen (eventText);
 	eventText += curLen;
@@ -1330,7 +1273,7 @@ static Bool PrvGetEventText(const EventType* eventP, char* eventText)
 		case tsmConfirmEvent:
 			curLen += sprintf(eventText,"tsmConfirmEvent   ID: %u  Text: ", 
 					eventP->data.tsmConfirm.formID);
-			EmMem_strncat(eventText, (emuptr)eventP->data.tsmConfirm.yomiText, kEventTextMaxLen - curLen);
+			uae_strncat(eventText, (emuptr)eventP->data.tsmConfirm.yomiText, kEventTextMaxLen - curLen);
 			eventText[kEventTextMaxLen] = 0;	// Make sure we're terminated
 			break;
 			
@@ -1400,14 +1343,21 @@ static Bool PrvGetEventText(const EventType* eventP, char* eventText)
 //		¥ LogEvtAddEventToQueue
 // ---------------------------------------------------------------------------
 
-void LogEvtAddEventToQueue (const EventType& event)
+void LogEvtAddEventToQueue (emuptr eventP)
 {
 	if (LogEnqueuedEvents ())
 	{
+		// Get a copy of the event record.  This will be in big-endian
+		// format, so byteswap it if necessary..
+
+		EventType	newEvent;
+		uae_memcpy ((void*) &newEvent, eventP, sizeof (newEvent));
+		Canonical (newEvent);
+
 		// Get the text for this event.  If there is such text, log it.
 
 		char	eventText[kEventTextMaxLen] = " -> EvtAddEventToQueue: ";
-		if (PrvGetEventText (&event, eventText))
+		if (PrvGetEventText (&newEvent, eventText))
 		{
 			LogAppendMsg (eventText);
 		}
@@ -1419,14 +1369,21 @@ void LogEvtAddEventToQueue (const EventType& event)
 //		¥ LogEvtAddUniqueEventToQueue
 // ---------------------------------------------------------------------------
 
-void LogEvtAddUniqueEventToQueue (const EventType& event, UInt32, Boolean)
+void LogEvtAddUniqueEventToQueue (emuptr eventP, UInt32, Boolean)
 {
 	if (LogEnqueuedEvents ())
 	{
+		// Get a copy of the event record.  This will be in big-endian
+		// format, so byteswap it if necessary..
+
+		EventType	newEvent;
+		uae_memcpy ((void*) &newEvent, eventP, sizeof (newEvent));
+		Canonical (newEvent);
+
 		// Get the text for this event.  If there is such text, log it.
 
 		char	eventText[kEventTextMaxLen] = " -> EvtAddUniqueEventToQueue: ";
-		if (PrvGetEventText (&event, eventText))
+		if (PrvGetEventText (&newEvent, eventText))
 		{
 			LogAppendMsg (eventText);
 		}
@@ -1460,11 +1417,14 @@ void LogEvtEnqueueKey (UInt16 ascii, UInt16 keycode, UInt16 modifiers)
 //		¥ LogEvtEnqueuePenPoint
 // ---------------------------------------------------------------------------
 
-void LogEvtEnqueuePenPoint (const PointType& pt)
+void LogEvtEnqueuePenPoint (emuptr ptP)
 {
 	if (LogEnqueuedEvents ())
 	{
-		LogAppendMsg (" -> EvtEnqueuePenPoint: pen->x=%d, pen->y=%d.", pt.x, pt.y);
+		Int16	penX = (Int16) EmMemGet16 (ptP + 0);
+		Int16	penY = (Int16) EmMemGet16 (ptP + 2);
+
+		LogAppendMsg (" -> EvtEnqueuePenPoint: pen->x=%d, pen->y=%d.", penX, penY);
 	}
 }
 
@@ -1473,16 +1433,23 @@ void LogEvtEnqueuePenPoint (const PointType& pt)
 //		¥ LogEvtGetEvent
 // ---------------------------------------------------------------------------
 
-void LogEvtGetEvent (const EventType& event, Int32 timeout)
+void LogEvtGetEvent (emuptr eventP, Int32 timeout)
 {
 	UNUSED_PARAM(timeout)
 
 	if (LogDequeuedEvents ())
 	{
+		// Get a copy of the event record.  This will be in big-endian
+		// format, so byteswap it if necessary..
+
+		EventType	newEvent;
+		uae_memcpy ((void*) &newEvent, eventP, sizeof (newEvent));
+		Canonical (newEvent);
+
 		// Get the text for this event.  If there is such text, log it.
 
 		char	eventText[kEventTextMaxLen] = "<-  EvtGetEvent: ";
-		if (PrvGetEventText (&event, eventText))
+		if (PrvGetEventText (&newEvent, eventText))
 		{
 			LogAppendMsg (eventText);
 		}
@@ -1494,10 +1461,14 @@ void LogEvtGetEvent (const EventType& event, Int32 timeout)
 //		¥ LogEvtGetPen
 // ---------------------------------------------------------------------------
 
-void LogEvtGetPen (Int16 screenX, Int16 screenY, Boolean penDown)
+void LogEvtGetPen (emuptr pScreenX, emuptr pScreenY, emuptr pPenDown)
 {
 	if (LogDequeuedEvents ())
 	{
+		Int16	screenX = (Int16) EmMemGet16 (pScreenX);
+		Int16	screenY = (Int16) EmMemGet16 (pScreenY);
+		Boolean	penDown = (Boolean) EmMemGet8 (pPenDown);
+
 		static Int16	lastScreenX = -2;
 		static Int16	lastScreenY = -2;
 		static Boolean	lastPenDown = false;
@@ -1530,16 +1501,23 @@ void LogEvtGetPen (Int16 screenX, Int16 screenY, Boolean penDown)
 //		¥ LogEvtGetSysEvent
 // ---------------------------------------------------------------------------
 
-void LogEvtGetSysEvent (const EventType& event, Int32 timeout)
+void LogEvtGetSysEvent (emuptr eventP, Int32 timeout)
 {
 	UNUSED_PARAM(timeout)
 
 	if (LogDequeuedEvents ())
 	{
+		// Get a copy of the event record.  This will be in big-endian
+		// format, so byteswap it if necessary..
+
+		EventType	newEvent;
+		uae_memcpy ((void*) &newEvent, eventP, sizeof (newEvent));
+		Canonical (newEvent);
+
 		// Get the text for this event.  If there is such text, log it.
 
 		char	eventText[kEventTextMaxLen] = "<-  EvtGetSysEvent: ";
-		if (PrvGetEventText (&event, eventText))
+		if (PrvGetEventText (&newEvent, eventText))
 		{
 			LogAppendMsg (eventText);
 		}

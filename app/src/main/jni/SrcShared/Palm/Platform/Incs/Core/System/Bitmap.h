@@ -43,9 +43,6 @@ typedef enum {
 	BitmapCompressionTypeNone = 0xFF
 } BitmapCompressionType;
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER еее╩-- need to add #defines for each bit for endian portableness
-#endif // PUBLIC_STUFF_STRIPPED
 typedef struct BitmapFlagsType {
 	UInt16 compressed:1;  			// Data format:  0=raw; 1=compressed
 	UInt16 hasColorTable:1;			// if true, color table stored before bits[]

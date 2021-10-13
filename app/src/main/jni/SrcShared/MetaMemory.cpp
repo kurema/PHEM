@@ -16,22 +16,17 @@
 
 #include "DebugMgr.h"			// Debug::GetRoutineName
 #include "EmBankSRAM.h"			// gRAMBank_Size
-#include "EmCPU68K.h"			// gCPU68K
 #include "EmHAL.h"				// EmHAL
 #include "EmLowMem.h"			// LowMem_SetGlobal, LowMem_GetGlobal
 #include "EmMemory.h"			// CEnableFullAccess, EmMemGetMetaAddress
 #include "EmPalmFunction.h"		// InFoo functions
 #include "EmPalmOS.h"			// StackRange, GetBootStack
 #include "EmPalmStructs.h"		// EmAliasWindowType, EmAliasFormType
-#include "EmPatchState.h"		// IsInSysBinarySearch, OSMajorMinorVersion
 #include "EmSession.h"			// gSession->ScheduleDeferredError
 #include "Logging.h"			// ReportUIMgrDataAccess
 #include "Miscellaneous.h"		// FindFunctionName
 #include "ROMStubs.h"			// SysKernelInfo
-#include "SessionFile.h"		// SessionFile::Write
-
-#include <algorithm>			// find
-#include <ctype.h>				// islower
+#include "TrapPatches.h"		// IsInSysBinarySearch, OSMajorMinorVersion
 
 struct EmTaggedPalmChunk : public EmPalmChunk
 {
@@ -49,24 +44,6 @@ typedef vector<EmTaggedPalmChunk>	EmTaggedPalmChunkList;
 static EmTaggedPalmChunkList	gTaggedChunks;
 static Bool						gHaveLastChunk;
 static EmTaggedPalmChunk		gLastChunk;
-
-static vector<MemHandle>		gBitmapHandleList;
-static vector<MemPtr>			gBitmapPointerList;
-
-enum
-{
-	kUIWindow,
-	kUIBitmap
-};
-
-typedef Bool (*IterFn) (emuptr object, void* data, int type);
-static Bool PrvCheckUIObject (emuptr object, void* data, int type);
-static Bool PrvMarkUIObject (emuptr object, void* data, int type);
-static Bool PrvUnmarkUIObject (emuptr object, void* data, int type);
-static Bool PrvForEachBitmap (IterFn fn, void* data);
-static Bool PrvForEachWindow (IterFn fn, void* data);
-static Bool PrvForEachUIObject (IterFn fn, void* data);
-
 
 #pragma mark -
 
@@ -87,9 +64,6 @@ void MetaMemory::Reset (void)
 {
 	gTaggedChunks.clear ();
 	gHaveLastChunk = false;
-
-	gBitmapHandleList.clear ();
-	gBitmapPointerList.clear ();
 }
 
 
@@ -97,22 +71,8 @@ void MetaMemory::Reset (void)
 //		¥ MetaMemory::Save
 // ---------------------------------------------------------------------------
 
-void MetaMemory::Save (SessionFile& f)
+void MetaMemory::Save (SessionFile&)
 {
-	const long	kCurrentVersion = 1;
-
-	Chunk			chunk;
-	EmStreamChunk	s (chunk);
-
-	s << kCurrentVersion;
-
-	gBitmapHandleList.clear ();
-	gBitmapPointerList.clear ();
-
-	s << gBitmapHandleList;
-	s << gBitmapPointerList;
-
-	f.WriteMetaInfo (chunk);
 }
 
 
@@ -120,28 +80,10 @@ void MetaMemory::Save (SessionFile& f)
 //		¥ MetaMemory::Load
 // ---------------------------------------------------------------------------
 
-void MetaMemory::Load (SessionFile& f)
+void MetaMemory::Load (SessionFile&)
 {
 	gTaggedChunks.clear ();
 	gHaveLastChunk = false;
-
-	Chunk	chunk;
-	if (f.ReadMetaInfo (chunk))
-	{
-		long			version;
-		EmStreamChunk	s (chunk);
-
-		s >> version;
-
-		if (version >= 1)
-		{
-			s >> gBitmapHandleList;
-			s >> gBitmapPointerList;
-
-			gBitmapHandleList.clear ();
-			gBitmapPointerList.clear ();
-		}
-	}
 }
 
 
@@ -385,7 +327,7 @@ Errors::EAccessType MetaMemory::GetWhatHappened (emuptr address, long size, Bool
 		if (inUIObject)
 		{
 			// We don't really need to do anything else (like return an
-			// error or check "butItsOK", since if an error occurred,
+			// error or check "butItsOK", since if an error occured,
 			// an error object will be scheduled with the EmSession.
 
 			whatHappened = Errors::kOKAccess;
@@ -438,17 +380,14 @@ Errors::EAccessType MetaMemory::AllowForBugs (emuptr address, long size, Bool fo
 
 		// SecPrvRandomSeed calls Crc16CalcBlock (NULL, 0x1000, 0).
 
-		emuptr	a6 = gCPU68K->GetRegister (e68KRegID_A6);
-		if (::IsEven (a6) && EmPalmOS::IsInStack (a6))
-		{
-			emuptr	rtnAddr = EmMemGet32 (a6 + 4);
+		emuptr	a6 = m68k_areg (regs, 6);
+		emuptr	rtnAddr = EmMemGet32 (a6 + 4);
 
-			if (address < 0x1000 &&
-				::InCrc16CalcBlock () &&
-				::InSecPrvRandomSeed (rtnAddr))
-			{
-				return Errors::kOKAccess;
-			}
+		if (address < 0x1000 &&
+			::InCrc16CalcBlock () &&
+			::InSecPrvRandomSeed (rtnAddr))
+		{
+			return Errors::kOKAccess;
 		}
 
 		if (whatHappened == Errors::kLowMemAccess)
@@ -463,7 +402,7 @@ Errors::EAccessType MetaMemory::AllowForBugs (emuptr address, long size, Bool fo
 
 			// There's a bug in BackspaceChar (pre-3.2) that accesses the word at 0x0000.
 
-			if (EmPatchState::HasBackspaceCharBug () &&
+			if (Patches::HasBackspaceCharBug () &&
 				address == 0x0000 && size == 2 &&
 				InBackspaceChar ())
 			{
@@ -472,7 +411,7 @@ Errors::EAccessType MetaMemory::AllowForBugs (emuptr address, long size, Bool fo
 
 			// There's a bug in FldDelete (pre-3.2) that accesses the word at 0x0000.
 
-			if (EmPatchState::HasFldDeleteBug () &&
+			if (Patches::HasFldDeleteBug () &&
 				address == 0x0000 && size == 2 &&
 				::InFldDelete ())
 			{
@@ -481,7 +420,7 @@ Errors::EAccessType MetaMemory::AllowForBugs (emuptr address, long size, Bool fo
 
 			// There's a bug in GrfProcessStroke (pre-3.1) that accesses the word at 0x0002.
 
-			if (EmPatchState::HasGrfProcessStrokeBug () &&
+			if (Patches::HasGrfProcessStrokeBug () &&
 				address == 0x0002 && size == 2 &&
 				::InGrfProcessStroke ())
 			{
@@ -490,7 +429,7 @@ Errors::EAccessType MetaMemory::AllowForBugs (emuptr address, long size, Bool fo
 
 			// There's a bug in NetPrvTaskMain (pre-3.2) that accesses low-memory.
 
-			if (EmPatchState::HasNetPrvTaskMainBug () &&
+			if (Patches::HasNetPrvTaskMainBug () &&
 				::InNetPrvTaskMain ())
 			{
 				return Errors::kOKAccess;
@@ -501,8 +440,8 @@ Errors::EAccessType MetaMemory::AllowForBugs (emuptr address, long size, Bool fo
 		//	call the user callback function with a pointer just past the array
 		//	to search.
 
-		if (EmPatchState::HasSysBinarySearchBug () &&
-			EmPatchState::IsInSysBinarySearch ())
+		if (Patches::HasSysBinarySearchBug () &&
+			Patches::IsInSysBinarySearch ())
 		{
 			return Errors::kOKAccess;
 		}
@@ -1191,7 +1130,7 @@ void MetaMemory::GWH_ExamineChunk (	const EmPalmChunk& chunk,
 		}
 
 
-		if (EmPatchState::HasConvertDepth1To2BWBug () &&
+		if (Patches::HasConvertDepth1To2BWBug () &&
 			info.result == Errors::kMemMgrAccess &&
 			info.forRead &&
 			info.size == sizeof (UInt8) &&
@@ -1218,7 +1157,7 @@ void MetaMemory::GWH_ExamineChunk (	const EmPalmChunk& chunk,
 		// random long (actually, the random location is the result of using a -1 to index
 		// into a menu array).
 
-		if (EmPatchState::HasMenuHandleEventBug () &&
+		if (Patches::HasMenuHandleEventBug () &&
 			info.forRead &&
 			info.size == sizeof (WinHandle) &&	// MenuPullDownType.menuWin
 			::InMenuHandleEvent ())
@@ -1230,7 +1169,7 @@ void MetaMemory::GWH_ExamineChunk (	const EmPalmChunk& chunk,
 		// There's a bug in NetPrvSettingSet that causes it to read 0x020C bytes
 		// from the beginning of its globals buffer when that buffer is only 8 bytes long.
 
-		if (EmPatchState::HasNetPrvSettingSetBug () &&
+		if (Patches::HasNetPrvSettingSetBug () &&
 			info.forRead &&
 			info.size == 4 &&
 			::InNetPrvSettingSet ())
@@ -1250,10 +1189,10 @@ void MetaMemory::GWH_ExamineChunk (	const EmPalmChunk& chunk,
 		// are any TCBs with a pointer into the deleted memory chunk.  That will
 		// work up until the point the TCB is marked as deleted.  This marking
 		// occurs in the AMX function cj_kptkdelete.  At that point, we can just
-		// check to see if the access occurred in that function and allow it.
+		// check to see if the access occured in that function and allow it.
 
 		if (info.result == Errors::kFreeChunkAccess &&
-			EmPatchState::HasDeletedStackBug ())
+			Patches::HasDeletedStackBug ())
 		{
 			// First see if there is an active TCB with a stack pointer
 			// pointing into this deleted memory chunk.
@@ -1266,7 +1205,7 @@ void MetaMemory::GWH_ExamineChunk (	const EmPalmChunk& chunk,
 			// Get the first task.  Remember the task IDs so that we can
 			// detect when we've looped through them all.  Remembering *all*
 			// the IDs (instead of just the first one) is necessary in case
-			// we're called with the linked list of TCBs is inconsistent
+			// we're called with the linked list of TCBs is inconsistant
 			// (that is, it's in the process of being updated -- when that's
 			// happening, we may find a loop that doesn't necessarily involve
 			// the first TCB).
@@ -1317,8 +1256,8 @@ PlanB:
 			// function is cj_kptkdelete.  If not, see if it looks like we're in a
 			// function called by cj_kptkdelete.
 
-			if (	gCPU->GetSP () >= bodyStart &&
-					gCPU->GetSP () < trlStart)
+			if (	m68k_areg (regs, 7) >= bodyStart &&
+					m68k_areg (regs, 7) < trlStart)
 			{
 				// See if we're currently in cj_kptkdelete.
 
@@ -1357,7 +1296,7 @@ PlanB:
 					// longword on every even boundary to see if it looks
 					// like a return address into cj_kptkdelete.
 
-					emuptr	a7 = gCPU->GetSP ();
+					emuptr	a7 = m68k_areg (regs, 7);
 
 					while (a7 >= bodyStart && a7 < trlStart)
 					{
@@ -1377,7 +1316,7 @@ PlanB:
 		// a byte in an unlocked block.
 
 		if (info.result == Errors::kUnlockedChunkAccess &&
-			EmPatchState::HasFindShowResultsBug () &&
+			Patches::HasFindShowResultsBug () &&
 			info.forRead &&
 			info.size == sizeof (Boolean) &&
 			addrStart == bodyStart + sizeof (UInt16) * 2 /*offsetof (FindParamsType, more)*/ &&
@@ -1392,19 +1331,16 @@ PlanB:
 		// generated in MemMove, which is called by DmWrite, which is called
 		// by FindSaveFindStr.  So look up the stack a bit to see who's calling us.
 
-		emuptr	a6_0 = gCPU68K->GetRegister (e68KRegID_A6);	// MemMove's A6 (points to caller's A6 and return address to caller)
-		if (::IsEven (a6_0) && EmPalmOS::IsInStack (a6_0))
+		emuptr	a6_0 = m68k_areg (regs, 6);	// MemMove's A6 (points to caller's A6 and return address to caller)
+		emuptr	a6_1 = EmMemGet32 (a6_0);		// DmWrite's (points to caller's A6 and return address to caller)
+		
+		if (Patches::HasFindSaveFindStrBug () &&
+			info.forRead &&
+			::InMemMove () &&							// See if we're in MemMove
+			::InDmWrite (EmMemGet32 (a6_0 + 4)) &&		// See if DmWrite is MemMove's caller
+			::InFindSaveFindStr (EmMemGet32 (a6_1 + 4)))	// See if FindSaveFindStr is DmWrite's caller
 		{
-			emuptr	a6_1 = EmMemGet32 (a6_0);				// DmWrite's (points to caller's A6 and return address to caller)
-
-			if (EmPatchState::HasFindSaveFindStrBug () &&
-				info.forRead &&
-				::InMemMove () &&								// See if we're in MemMove
-				::InDmWrite (EmMemGet32 (a6_0 + 4)) &&			// See if DmWrite is MemMove's caller
-				::InFindSaveFindStr (EmMemGet32 (a6_1 + 4)))	// See if FindSaveFindStr is DmWrite's caller
-			{
-				goto HideBug;
-			}
+			goto HideBug;
 		}
 
 		// There's a bug in FntDefineFont that causes it to possibly read
@@ -1412,7 +1348,7 @@ PlanB:
 		// generated in MemMove, which is called by FntDefineFont.  So look
 		// up the stack a bit to see who's calling us.
 
-		if (EmPatchState::HasFntDefineFontBug () &&
+		if (Patches::HasFntDefineFontBug () &&
 			info.forRead &&
 			::InMemMove () &&							// See if we're in MemMove
 			::InFntDefineFont (EmMemGet32 (a6_0 + 4)))	// See if FntDefineFont is MemMove's caller
@@ -1481,109 +1417,7 @@ HideBug:
 //	#define ALLOW_ACCESS_TO_INTERNALS_OF_FONTS
 //	#define ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS
 
-/*
-	AccessorGlueTrapsAvailable	TRUE if sysFtrNumROMVersion indicates 4.0 or later
-	AccessorGlueEmu68KAccAvail	TRUE if sysFtrNumAccessorTrapPresent feature exists and is non-zero
 
-	The following functions access the following fields directly, as of
-	SDK 4.0 Update 1 (DR1):
-
-	Glue function				Field accessed				Under this condition
-	---------------------------	---------------------------	--------------------
-	TblGlueGetNumberOfColumns	tableP->numColumns			!AccessorGlueTrapsAvailable
-
-	TblGlueGetTopRow			tableP->topRow				!AccessorGlueTrapsAvailable
-
-	TblGlueSetSelection			tableP->numColumns			!AccessorGlueTrapsAvailable
-								tableP->numRows
-								tableP->attr.visible
-								tableP->rowAttrs
-								tableP->attr.selected
-								tableP->currentRow
-								tableP->currentColumn
-
-	TblGlueGetColumnMasked		tableP->numColumns			!AccessorGlueEmu68KAccAvail
-								tableP->columnAttrs
-
-	BmpGlueGetDimensions		bitmapP->width				!AccessorGlueTrapsAvailable
-								bitmapP->height
-								bitmapP->rowBytes
-
-	BmpGlueGetBitDepth			bitmapP->version			!AccessorGlueTrapsAvailable
-								bitmapP->pixelSize
-
-	BmpGlueGetNextBitmap		bitmapP->version			!AccessorGlueTrapsAvailable
-								bitmapP->nextDepthOffset
-
-	BmpGlueGetTransparentValue	bitmapP->version			!AccessorGlueEmu68KAccAvail
-								bitmapP->flags.hasTransparency
-								((BitmapTypeV2*)bitmapP)->transparentValue
-								bitmapP->transparentIndex
-
-	BmpGlueSetTransparentValue	bitmapP->flags.forScreen	!AccessorGlueEmu68KAccAvail
-								bitmapP->version
-								bitmapP->pixelSize
-								bitmapP->transparentIndex
-								bitmapP->flags.hasTransparency
-
-	BmpGlueGetCompressionType	bitmapP->flags.compressed	!AccessorGlueEmu68KAccAvail
-								bitmapP->version
-								bitmapP->compressionType
-
-	CtlGlueGetControlStyle		ctlP->style					!AccessorGlueEmu68KAccAvail
-
-	CtlGlueGetFont				ctlP->font					!AccessorGlueEmu68KAccAvail
-
-	CtlGlueSetFont				ctlP->font					!AccessorGlueEmu68KAccAvail
-
-	CtlGlueGetGraphics			ctlP->attr.graphical		!AccessorGlueEmu68KAccAvail
-								gctlP->bitmapID
-								gctlP->selectedBitmapID
-
-	CtlGlueNewSliderControl		sctlP->attr.graphical		!AccessorGlueEmu68KAccAvail
-
-	CtlGlueSetLeftAnchor		ctlP->attr.leftAnchor		!AccessorGlueEmu68KAccAvail
-
-	FldGlueGetLineInfo			fldP->lines					!AccessorGlueEmu68KAccAvail
-
-	FrmGlueGetObjectUsable		obj.control->attr.usable	!AccessorGlueEmu68KAccAvail
-								obj.list->attr.usable
-								obj.bitmap->attr.usable
-								obj.label->attr.usable
-								obj.gadget->attr.usable
-								obj.scrollBar->attr.usable
-								obj.table->attr.usable		AccessorGlueTrapsAvailable
-
-	FrmGlueGetLabelFont			formLabelP->fontID			!AccessorGlueEmu68KAccAvail
-
-	FrmGlueSetLabelFont			formLabelP->fontID			!AccessorGlueEmu68KAccAvail
-
-	FrmGlueGetDefaultButtonID	formP->defaultButton		!AccessorGlueEmu68KAccAvail
-
-	FrmGlueSetDefaultButtonID	formP->defaultButton		!AccessorGlueEmu68KAccAvail
-
-	FrmGlueGetHelpID			formP->helpRscId			!AccessorGlueEmu68KAccAvail
-
-	FrmGlueSetHelpID			formP->helpRscId			!AccessorGlueEmu68KAccAvail
-
-	FrmGlueGetMenuBarID			formP->menuRscId			!AccessorGlueEmu68KAccAvail
-
-	FrmGlueGetEventHandler		formP->handler				!AccessorGlueEmu68KAccAvail
-
-	LstGlueGetFont				listP->font					!AccessorGlueEmu68KAccAvail
-
-	LstGlueGetTopItem			listP->topItem				!AccessorGlueTrapsAvailable
-
-	LstGlueSetFont				listP->font					!AccessorGlueEmu68KAccAvail
-
-	LstGlueGetItemsText			listP->itemsText			!AccessorGlueEmu68KAccAvail
-
-	LstGlueSetIncrementalSearch	listP->attr.search			!AccessorGlueEmu68KAccAvail
-
-	WinGlueGetFrameType			winP->frameType.word		!AccessorGlueEmu68KAccAvail
-
-	WinGlueSetFrameType			winP->frameType.word		!AccessorGlueEmu68KAccAvail
-*/
 // ---------------------------------------------------------------------------
 //		¥ PrvTrapsAvailable
 // ---------------------------------------------------------------------------
@@ -1592,7 +1426,7 @@ static Bool PrvTrapsAvailable (void)
 {
 	// If the OS is 4.0 or later, the API should be used.
 
-	Bool	result = EmPatchState::OSMajorVersion () >= 4;
+	Bool	result = Patches::OSMajorVersion () >= 4;
 
 	return result;
 }
@@ -1659,7 +1493,7 @@ static Bool PrvAllowedFieldObjectAccess (emuptr objectP, emuptr address, Bool fo
 	*/
 
 	// Allow read access to "lines" if Emu68KAccessorTrapAvailable / AccFldGetLineInfo
-	// not available -- FldGlueGetLineInfo needs access to it.
+	// not available
 
 	if (forRead)
 	{
@@ -1669,12 +1503,15 @@ static Bool PrvAllowedFieldObjectAccess (emuptr objectP, emuptr address, Bool fo
 
 		if (offset >= lines_offset && offset < lines_offset + lines_size)
 		{
-			return true;
+			if (!::PrvAccessorTrapAvailable ())
+			{
+				return true;
+			}
 		}
 	}
 
 	// Allow read/write access to "attr" before Palm OS 3.3.  Catherine
-	// says there's a bug before those versions they need to workaround.
+	// says there's a bug before those versions they need to workaround
 
 //	if (forRead)
 	{
@@ -1684,7 +1521,7 @@ static Bool PrvAllowedFieldObjectAccess (emuptr objectP, emuptr address, Bool fo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			if (EmPatchState::OSMajorMinorVersion () < 33)
+			if (Patches::OSMajorMinorVersion () < 33)
 			{
 				return true;
 			}
@@ -1751,12 +1588,9 @@ static Bool PrvAllowedControlObjectAccess (emuptr objectP, emuptr address, Bool 
 			Int16					value;				// FrmGetControlValue, CtlGetValue, FrmSetControlValue, CtlSetValue
 			MemPtr					activeSliderP;
 	*/
-
+	
 	// Allow read access to "attr" and "style" if Emu68KAccessorTrapAvailable / AccFrmGetObjectUsable
-	// not available -- FrmGlueGetObjectUsable and CtlGlueGetControlStyle need access to them.
-	//
-	// Allow read access to "attr.graphical", bitmapID, and selectedBitmapID fields
-	// for CtlGlueGetGraphics.
+	// not available
 
 	if (forRead)
 	{
@@ -1771,42 +1605,30 @@ static Bool PrvAllowedControlObjectAccess (emuptr objectP, emuptr address, Bool 
 		if ((offset >= attr_offset && offset < attr_offset + attr_size) ||
 			(offset >= style_offset && offset < style_offset + style_size))
 		{
-			return true;
-		}
-
-		EmAliasGraphicControlType<PAS>	control (objectP);
-		if (((Int16) control.attr.flags) & ControlAttrType_graphical)
-		{
-			const size_t	bitmapID_offset			= EmAliasGraphicControlType<PAS>::offsetof_bitmapID ();
-			const size_t	bitmapID_size			= EmAliasDmResID<PAS>::GetSize ();
-
-			const size_t	selectedBitmapID_offset	= EmAliasGraphicControlType<PAS>::offsetof_selectedBitmapID ();
-			const size_t	selectedBitmapID_size	= EmAliasDmResID<PAS>::GetSize ();
-
-			if ((offset >= bitmapID_offset && offset < bitmapID_offset + bitmapID_size) ||
-				(offset >= selectedBitmapID_offset && offset < selectedBitmapID_offset + selectedBitmapID_size))
+			if (!::PrvAccessorTrapAvailable ())
 			{
 				return true;
 			}
 		}
 	}
 
-	// Allow read/write access to "font" field for CtlGlueGetFont / CtlGlueSetFont.
-	//
-	// Allow read/write access to "attr.graphical" and "attr.leftAnchor" fields
-	// for CtlGlueNewSliderControl and CtlGlueSetLeftAnchor.
+	// Allow read/write access to "font" field.  Developers may need
+	// to set the font to something other than what Constructor allows
+	// or knows about.
+	
+	// Actually, Roger says that developers should call FrmRemoveObject
+	// and FooNewFoo to create an object with the right font.
+
+	// But, on the third hand, FooNewFoo can run into the
+	// PrvFixupPoints bug.
 
 	{
 		size_t			offset		= address - objectP;
 
-		const size_t	attr_offset	= EmAliasControlType<PAS>::offsetof_attr ();
-		const size_t	attr_size	= EmAliasControlAttrType<PAS>::GetSize ();
-
 		const size_t	font_offset	= EmAliasControlType<PAS>::offsetof_font ();
 		const size_t	font_size	= EmAliasFontID<PAS>::GetSize ();
 
-		if ((offset >= attr_offset && offset < attr_offset + attr_size) ||
-			(offset >= font_offset && offset < font_offset + font_size))
+		if ((offset >= font_offset && offset < font_offset + font_size))
 		{
 			return true;
 		}
@@ -1848,12 +1670,12 @@ static Bool PrvAllowedListObjectAccess (emuptr objectP, emuptr address, Bool for
 			WinHandle				popupWin;			// (Used internally)
 			ListDrawDataFuncPtr		drawItemsCallback;	// LstSetDrawFunction
 	*/
-
+	
 	// Allow read access to "attr" if Emu68KAccessorTrapAvailable / AccFrmGetObjectUsable
-	// not available -- FrmGlueGetObjectUsable needs access to it.
+	// not available
 
-	// Actually, always allow full read/write access to attr.  LstGlueSetIncrementalSearch
-	// accesses it.
+	// Actually, always allow full read/write access to attr.  Developers have a need
+	// to access the "search" attribute, but there's no API for it.
 
 //	if (forRead)
 	{
@@ -1863,21 +1685,10 @@ static Bool PrvAllowedListObjectAccess (emuptr objectP, emuptr address, Bool for
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			return true;
-		}
-	}
-
-	// Allow read access to itemsText for LstGlueGetItemsText.
-
-	if (forRead)
-	{
-		size_t			offset				= address - objectP;
-		const size_t	itemsText_offset	= EmAliasListType<PAS>::offsetof_itemsText ();
-		const size_t	itemsText_size		= EmAliasemuptr<PAS>::GetSize ();
-
-		if (offset >= itemsText_offset && offset < itemsText_offset + itemsText_size)
-		{
-			return true;
+//			if (!::PrvAccessorTrapAvailable ())
+			{
+				return true;
+			}
 		}
 	}
 
@@ -1898,7 +1709,15 @@ static Bool PrvAllowedListObjectAccess (emuptr objectP, emuptr address, Bool for
 		}
 	}
 
-	// Allow read/write access to "font" field for LstGlueGetFont / LstGlueSetFont.
+	// Allow read/write access to "font" field.  Developers may need
+	// to set the font to something other than what Constructor allows
+	// or knows about.
+
+	// Actually, Roger says that developers should call FrmRemoveObject
+	// and FooNewFoo to create an object with the right font.
+
+	// But, on the third hand, FooNewFoo can run into the
+	// PrvFixupPoints bug.
 
 	{
 		size_t			offset		= address - objectP;
@@ -1988,10 +1807,6 @@ static Bool PrvAllowedTableObjectAccess (emuptr objectP, emuptr address, Bool fo
 	//	Give read access to rowAttrs before 4.0
 	//	Give r/w access to currentRow before 4.0
 	//	Give r/w access to currentColumn before 4.0
-	//
-	// TblGlueGetColumnMasked
-	//	Give read access to numColumns
-	//	Give read access to columnAttrs
 
 	if (forRead)
 	{
@@ -2026,9 +1841,6 @@ static Bool PrvAllowedTableObjectAccess (emuptr objectP, emuptr address, Bool fo
 		const size_t	items_offset		= EmAliasTableType<PAS>::offsetof_items ();
 		const size_t	items_size			= EmAliasemuptr<PAS>::GetSize ();
 
-		const size_t	numColumns_offset	= EmAliasTableType<PAS>::offsetof_numColumns ();
-		const size_t	numColumns_size		= EmAliasUInt16<PAS>::GetSize ();
-
 		const size_t	rowAttrs_offset		= EmAliasTableType<PAS>::offsetof_rowAttrs ();
 		const size_t	rowAttrs_size		= EmAliasemuptr<PAS>::GetSize ();
 
@@ -2036,7 +1848,6 @@ static Bool PrvAllowedTableObjectAccess (emuptr objectP, emuptr address, Bool fo
 		const size_t	columnAttrs_size	= EmAliasemuptr<PAS>::GetSize ();
 
 		if ((offset >= items_offset && offset < items_offset + items_size) ||
-			(offset >= numColumns_offset && offset < numColumns_offset + numColumns_size) ||
 			(offset >= rowAttrs_offset && offset < rowAttrs_offset + rowAttrs_size) ||
 			(offset >= columnAttrs_offset && offset < columnAttrs_offset + columnAttrs_size))
 		{
@@ -2083,12 +1894,12 @@ static Bool PrvAllowedTableObjectAccess (emuptr objectP, emuptr address, Bool fo
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormBitmapObjectAccess
+//		¥ PrvAllowedBitmapObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormBitmapObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedBitmapObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	/*
 		FormBitmapType
@@ -2099,7 +1910,7 @@ static Bool PrvAllowedFormBitmapObjectAccess (emuptr objectP, emuptr address, Bo
 	*/
 
 	// Allow read access to "attr" if Emu68KAccessorTrapAvailable / AccFrmGetObjectUsable
-	// not available -- FrmGlueGetObjectUsable needs access to it.
+	// not available
 
 	if (forRead)
 	{
@@ -2109,7 +1920,10 @@ static Bool PrvAllowedFormBitmapObjectAccess (emuptr objectP, emuptr address, Bo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			return true;
+			if (!::PrvAccessorTrapAvailable ())
+			{
+				return true;
+			}
 		}
 	}
 
@@ -2118,18 +1932,18 @@ static Bool PrvAllowedFormBitmapObjectAccess (emuptr objectP, emuptr address, Bo
 
 	{
 		size_t			offset		= address - objectP;
-
 		const size_t	attr_offset	= EmAliasFormBitmapType<PAS>::offsetof_attr ();
 		const size_t	attr_size	= EmAliasFormObjAttrType<PAS>::GetSize ();
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			if (EmPatchState::OSMajorMinorVersion () < 32)
+			if (Patches::OSMajorMinorVersion () < 32)
 			{
 				return true;
 			}
 		}
 	}
+
 
 	// Don't allow access to any other fields.
 
@@ -2138,12 +1952,12 @@ static Bool PrvAllowedFormBitmapObjectAccess (emuptr objectP, emuptr address, Bo
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormLineObjectAccess
+//		¥ PrvAllowedLineObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormLineObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedLineObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	UNUSED_PARAM (objectP)
 	UNUSED_PARAM (address)
@@ -2163,12 +1977,12 @@ static Bool PrvAllowedFormLineObjectAccess (emuptr objectP, emuptr address, Bool
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormFrameObjectAccess
+//		¥ PrvAllowedFrameObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormFrameObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedFrameObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	UNUSED_PARAM (objectP)
 	UNUSED_PARAM (address)
@@ -2189,12 +2003,12 @@ static Bool PrvAllowedFormFrameObjectAccess (emuptr objectP, emuptr address, Boo
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormRectangleObjectAccess
+//		¥ PrvAllowedRectangleObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormRectangleObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedRectangleObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	UNUSED_PARAM (objectP)
 	UNUSED_PARAM (address)
@@ -2213,12 +2027,12 @@ static Bool PrvAllowedFormRectangleObjectAccess (emuptr objectP, emuptr address,
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormLabelObjectAccess
+//		¥ PrvAllowedLabelObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormLabelObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedLabelObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	/*
 		FormLabelType
@@ -2232,7 +2046,7 @@ static Bool PrvAllowedFormLabelObjectAccess (emuptr objectP, emuptr address, Boo
 	*/
 
 	// Allow read access to "attr" if Emu68KAccessorTrapAvailable / AccFrmGetObjectUsable
-	// not available -- FrmGlueGetObjectUsable needs access to it.
+	// not available
 
 	if (forRead)
 	{
@@ -2242,11 +2056,22 @@ static Bool PrvAllowedFormLabelObjectAccess (emuptr objectP, emuptr address, Boo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			return true;
+			if (!::PrvAccessorTrapAvailable ())
+			{
+				return true;
+			}
 		}
 	}
 
-	// Allow read/write access to "font" field for FrmGlueGetLabelFont / FrmGlueSetLabelFont.
+	// Allow read/write access to "font" field.  Developers may need
+	// to set the font to something other than what Constructor allows
+	// or knows about.
+
+	// Actually, Roger says that developers should call FrmRemoveObject
+	// and FooNewFoo to create an object with the right font.
+	
+	// But, on the third hand, FooNewFoo can run into the
+	// PrvFixupPoints bug.
 
 	{
 		size_t			offset		= address - objectP;
@@ -2267,12 +2092,12 @@ static Bool PrvAllowedFormLabelObjectAccess (emuptr objectP, emuptr address, Boo
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormTitleObjectAccess
+//		¥ PrvAllowedTitleObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormTitleObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedTitleObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	UNUSED_PARAM (objectP)
 	UNUSED_PARAM (address)
@@ -2291,12 +2116,12 @@ static Bool PrvAllowedFormTitleObjectAccess (emuptr objectP, emuptr address, Boo
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormPopupObjectAccess
+//		¥ PrvAllowedPopupObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormPopupObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedPopupObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	UNUSED_PARAM (objectP)
 	UNUSED_PARAM (address)
@@ -2315,12 +2140,12 @@ static Bool PrvAllowedFormPopupObjectAccess (emuptr objectP, emuptr address, Boo
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormGraffitiStateObjectAccess
+//		¥ PrvAllowedGraffitiStateObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormGraffitiStateObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedGraffitiStateObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	UNUSED_PARAM (objectP)
 	UNUSED_PARAM (address)
@@ -2338,12 +2163,12 @@ static Bool PrvAllowedFormGraffitiStateObjectAccess (emuptr objectP, emuptr addr
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedFormGadgetObjectAccess
+//		¥ PrvAllowedGadgetObjectAccess
 // ---------------------------------------------------------------------------
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormGadgetObjectAccess (emuptr objectP, emuptr address, Bool forRead)
+static Bool PrvAllowedGadgetObjectAccess (emuptr objectP, emuptr address, Bool forRead)
 {
 	/*
 		FormGadgetType
@@ -2368,9 +2193,10 @@ static Bool PrvAllowedFormGadgetObjectAccess (emuptr objectP, emuptr address, Bo
 	// access fields is directly.
 
 	return true;
+
 #else
 	// Allow read access to "attr" if Emu68KAccessorTrapAvailable / AccFrmGetObjectUsable
-	// not available -- FrmGlueGetObjectUsable needs access to it.
+	// not available.
 
 	if (forRead)
 	{
@@ -2380,7 +2206,10 @@ static Bool PrvAllowedFormGadgetObjectAccess (emuptr objectP, emuptr address, Bo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			return true;
+			if (!::PrvAccessorTrapAvailable ())
+			{
+				return true;
+			}
 		}
 	}
 
@@ -2395,7 +2224,7 @@ static Bool PrvAllowedFormGadgetObjectAccess (emuptr objectP, emuptr address, Bo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			if (EmPatchState::OSMajorMinorVersion () < 35)
+			if (Patches::OSMajorMinorVersion () < 35)
 			{
 				return true;
 			}
@@ -2436,7 +2265,7 @@ static Bool PrvAllowedScrollBarObjectAccess (emuptr objectP, emuptr address, Boo
 	*/
 
 	// Allow read access to "attr" if Emu68KAccessorTrapAvailable / AccFrmGetObjectUsable
-	// not available -- FrmGlueGetObjectUsable needs access to it.
+	// not available
 
 	if (forRead)
 	{
@@ -2446,7 +2275,10 @@ static Bool PrvAllowedScrollBarObjectAccess (emuptr objectP, emuptr address, Boo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			return true;
+			if (!::PrvAccessorTrapAvailable ())
+			{
+				return true;
+			}
 		}
 	}
 
@@ -2461,7 +2293,7 @@ static Bool PrvAllowedScrollBarObjectAccess (emuptr objectP, emuptr address, Boo
 
 		if (offset >= attr_offset && offset < attr_offset + attr_size)
 		{
-			if (EmPatchState::OSMajorMinorVersion () < 35)
+			if (Patches::OSMajorMinorVersion () < 35)
 			{
 				return true;
 			}
@@ -2480,41 +2312,34 @@ static Bool PrvAllowedScrollBarObjectAccess (emuptr objectP, emuptr address, Boo
 // Return whether or not the given access to the given form object is allowed
 // on the current platform.
 
-static Bool PrvAllowedFormObjectAccess (EmAliasFormObjListType<PAS>& formObject,
-										emuptr address, Bool forRead)
+static Bool PrvAllowedFormObjectAccess (emuptr thisObject, emuptr address, Bool forRead)
 {
-	//
-	// No access is allowed if Accessor Functions are available.
-	//
-
-	if (::PrvAccessorTrapAvailable ())
-		return false;
-
-	FormObjectKind	kind = formObject.objectType;
+	EmAliasFormObjListType<PAS>	object (thisObject);
+	FormObjectKind				kind = object.objectType;
 
 	Bool (*check_function) (emuptr, emuptr, Bool) = NULL;
 
 	switch (kind)
 	{
-		case frmFieldObj:			check_function = PrvAllowedFieldObjectAccess;				break;
-		case frmControlObj:			check_function = PrvAllowedControlObjectAccess;				break;
-		case frmListObj:			check_function = PrvAllowedListObjectAccess;				break;
-		case frmTableObj:			check_function = PrvAllowedTableObjectAccess;				break;
-		case frmBitmapObj:			check_function = PrvAllowedFormBitmapObjectAccess;			break;
-		case frmLineObj:			check_function = PrvAllowedFormLineObjectAccess;			break;
-		case frmFrameObj:			check_function = PrvAllowedFormFrameObjectAccess;			break;
-		case frmRectangleObj:		check_function = PrvAllowedFormRectangleObjectAccess;		break;
-		case frmLabelObj:			check_function = PrvAllowedFormLabelObjectAccess;			break;
-		case frmTitleObj:			check_function = PrvAllowedFormTitleObjectAccess;			break;
-		case frmPopupObj:			check_function = PrvAllowedFormPopupObjectAccess;			break;
-		case frmGraffitiStateObj:	check_function = PrvAllowedFormGraffitiStateObjectAccess;	break;
-		case frmGadgetObj:			check_function = PrvAllowedFormGadgetObjectAccess;			break;
-		case frmScrollBarObj:		check_function = PrvAllowedScrollBarObjectAccess;			break;
+		case frmFieldObj:			check_function = PrvAllowedFieldObjectAccess;			break;
+		case frmControlObj:			check_function = PrvAllowedControlObjectAccess;			break;
+		case frmListObj:			check_function = PrvAllowedListObjectAccess;			break;
+		case frmTableObj:			check_function = PrvAllowedTableObjectAccess;			break;
+		case frmBitmapObj:			check_function = PrvAllowedBitmapObjectAccess;			break;
+		case frmLineObj:			check_function = PrvAllowedLineObjectAccess;			break;
+		case frmFrameObj:			check_function = PrvAllowedFrameObjectAccess;			break;
+		case frmRectangleObj:		check_function = PrvAllowedRectangleObjectAccess;		break;
+		case frmLabelObj:			check_function = PrvAllowedLabelObjectAccess;			break;
+		case frmTitleObj:			check_function = PrvAllowedTitleObjectAccess;			break;
+		case frmPopupObj:			check_function = PrvAllowedPopupObjectAccess;			break;
+		case frmGraffitiStateObj:	check_function = PrvAllowedGraffitiStateObjectAccess;	break;
+		case frmGadgetObj:			check_function = PrvAllowedGadgetObjectAccess;			break;
+		case frmScrollBarObj:		check_function = PrvAllowedScrollBarObjectAccess;		break;
 	}
 
 	if (check_function)
 	{
-		return check_function (formObject.object, address, forRead);
+		return check_function (object.object, address, forRead);
 	}
 
 	return false;
@@ -2529,13 +2354,6 @@ static Bool PrvAllowedFormObjectAccess (EmAliasFormObjListType<PAS>& formObject,
 
 static Bool PrvAllowedWindowAccess (emuptr windowP, emuptr address, Bool forRead)
 {
-	//
-	// No access is allowed if Accessor Functions are available.
-	//
-
-	if (::PrvAccessorTrapAvailable ())
-		return false;
-
 	UNUSED_PARAM (forRead)
 
 	size_t					offset = address - windowP;
@@ -2551,7 +2369,7 @@ static Bool PrvAllowedWindowAccess (emuptr windowP, emuptr address, Bool forRead
 	//		displayWidthV20
 	//		displayHeightV20
 
-	if (forRead && EmPatchState::OSMajorMinorVersion () < 20)
+	if (forRead && Patches::OSMajorMinorVersion () < 20)
 	{
 		if (ACCESSED (displayWidthV20) ||
 			ACCESSED (displayHeightV20))
@@ -2565,7 +2383,7 @@ static Bool PrvAllowedWindowAccess (emuptr windowP, emuptr address, Bool forRead
 	//		displayAddrV20
 	//		bitmapP
 
-	if (forRead && EmPatchState::OSMajorMinorVersion () < 35)
+	if (forRead && Patches::OSMajorMinorVersion () < 35)
 	{
 		if (ACCESSED (displayAddrV20) ||
 			ACCESSED (bitmapP))
@@ -2574,7 +2392,7 @@ static Bool PrvAllowedWindowAccess (emuptr windowP, emuptr address, Bool forRead
 		}
 	}
 
-	// Allow access to the following field for WinGlueGetFrameType, WinGlueSetFrameType.
+	// Allow access to the following fields.
 
 	{
 		if (ACCESSED (frameType))
@@ -2595,13 +2413,6 @@ static Bool PrvAllowedWindowAccess (emuptr windowP, emuptr address, Bool forRead
 
 static Bool PrvAllowedFormAccess (emuptr formP, emuptr address, Bool forRead)
 {
-	//
-	// No access is allowed if Accessor Functions are available.
-	//
-
-	if (::PrvAccessorTrapAvailable ())
-		return false;
-
 	UNUSED_PARAM (formP)
 	UNUSED_PARAM (address)
 	UNUSED_PARAM (forRead)
@@ -2630,7 +2441,9 @@ static Bool PrvAllowedFormAccess (emuptr formP, emuptr address, Bool forRead)
 			FormObjListType*		objects;				// FrmGetObjectPtr, FrmGetObjectType
 	*/
 
-	// Allow read access to "handler" for FrmGlueGetEventHandler.
+	// Allow read access to "handler".  Some well-meaning application may
+	// try to chain to it if they change it.  Or they may want to restore
+	// when they're done with their own hook.
 
 	if (forRead)
 	{
@@ -2644,8 +2457,8 @@ static Bool PrvAllowedFormAccess (emuptr formP, emuptr address, Bool forRead)
 		}
 	}
 
-	// Allow full access to defaultButton, menuRscId, and helpRscId for FrmGlueGetDefaultButtonID,
-	// FrmGlueSetDefaultButtonID, FrmGlueGetHelpID, FrmGlueSetHelpID, and FrmGlueGetMenuBarID.
+	// Allow full access to defaultButton, menuRscId, and helpRscId.  There's no API
+	// for them, and developers do access them.
 
 	{
 		size_t			offset					= address - formP;
@@ -2671,773 +2484,7 @@ static Bool PrvAllowedFormAccess (emuptr formP, emuptr address, Bool forRead)
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvAllowedBitmapAccess
-// ---------------------------------------------------------------------------
-// Return whether or not the given access to the given bitmap is allowed
-// on the current platform.
-
-static Bool PrvAllowedBitmapAccess (EmAliasBitmapTypeV2<PAS>& bitmap, emuptr address, Bool forRead)
-{
-	//
-	// No access is allowed if Accessor Functions are available.
-	//
-
-	if (::PrvAccessorTrapAvailable ())
-		return false;
-
-	/*
-		BitmapType
-1.0			Int16					width;
-1.0			Int16					height;
-1.0			UInt16					rowBytes;
-1.0			BitmapFlagsType			flags;
-1.0				UInt16					compressed:1;  		// Data format:  0=raw; 1=compressed
-3.0				UInt16					hasColorTable:1;	// if true, color table stored before bits[]
-3.5				UInt16					hasTransparency:1;	// true if transparency is used
-3.5				UInt16					indirect:1;			// true if bits are stored indirectly
-3.5				UInt16					forScreen:1;		// system use only
-3.0			UInt8					pixelSize;			// bits/pixel
-3.0			UInt8					version;			// version of bitmap. This is vers 2
-3.0			UInt16					nextDepthOffset;	// # of DWords to next BitmapType
-														//	from beginnning of this one
-3.5			UInt8					transparentIndex;	// v2 only, if flags.hasTransparency is true,
-														// index number of transparent color
-3.5			UInt8					compressionType;	// v2 only, if flags.compressed is true, this is
-														// the type, see BitmapCompressionType
-
-			UInt16					reserved;			// for future use, must be zero!
-
-			// [colorTableType] pixels | pixels*
-														// If hasColorTable != 0, we have:
-														//	ColorTableType followed by pixels. 
-														// If hasColorTable == 0:
-														//	this is the start of the pixels
-														// if indirect != 0 bits are stored indirectly.
-														//	the address of bits is stored here
-														//	In some cases the ColorTableType will
-														//	have 0 entries and be 2 bytes long.
-	*/
-
-	/*
-		width				- Needs r/w access before 3.5.  In 3.5, use BmpCreate.
-							- Needs read access before 4.0.  In 4.0, use BmpGetDimensions.
-							- No access in 4.0 and later.
-		height				- Same as width.
-		rowBytes			- Same as width.
-		flags				- Needs r/w access always. (to get to hasTransparency)
-			compressed			- Needs r/w access before 3.5.  In 3.5, use BmpCompress.
-								- No access in 3.5 and later.
-			hasColorTable		- Needs r/w access before 3.5.  In 3.5, use BmpCreate.
-								- No access in 3.5 and later.
-			hasTransparency		- Needs r/w access always.
-			indirect			- No access -- system use only
-			forScreen			- No access -- system use only
-		pixelSize			- Needs r/w access before 3.5.  In 3.5, use BmpCreate.
-							- Needs read access before 4.0.  In 4.0, use BmpGetBitDepth.
-							- No access in 4.0 and later.
-		version				- Needs r/w access before 3.5.  In 3.5, use BmpCreate.
-							- Needs read access before 4.0.  In 4.0, use BmpGetNextBitmap. 
-							- No access in 4.0 and later.
-		nextDepthOffset		- Needs r/w access before 3.5.  In 3.5, use BmpCreate.
-							- Needs read access before 4.0.  In 4.0, use BmpGetNextBitmap.
-							- No access in 4.0 and later.
-		transparentIndex	- Needs r/w access always.
-		compressionType		- Needs r/w access before 3.5.  In 3.5, use BmpCompress.
-							- No access in 3.5 and later.
-		reserved			- No access
-	*/
-
-	/*
-		// 3.5
-			#define sysTrapBmpGetBits								0xA376  // was BltGetBitsAddr
-
-			// Bitmap manager functions
-			#define sysTrapBmpCreate								0xA3DD	// width, height, depth, colortable.
-			#define sysTrapBmpDelete								0xA3DE
-			#define sysTrapBmpCompress								0xA3DF	// compressed, compressionType
-
-			// sysTrapBmpGetBits defined in Screen driver traps
-			#define sysTrapBmpGetColortable							0xA3E0
-			#define sysTrapBmpSize									0xA3E1
-			#define sysTrapBmpBitsSize								0xA3E2
-			#define sysTrapBmpColortableSize						0xA3E3
-
-		// 4.0
-			#define sysTrapBmpGetDimensions							0xA44E
-			#define sysTrapBmpGetBitDepth							0xA44F
-			#define sysTrapBmpGetNextBitmap							0xA450
-			#define sysTrapBmpGetSizes								0xA455
-	*/
-
-	// Since the rules are largely dependent on OS version, let's order
-	// our first-level checks based on that.
-
-	if (EmPatchState::OSMajorMinorVersion () < 35)
-	{
-		// Have full access before 3.5, since there's no API.
-
-		return true;
-	}
-	else if (EmPatchState::OSMajorMinorVersion () < 40)
-	{
-		// The following functions were added in 3.5:
-		//
-		//	BmpGetBits
-		//	BmpCreate			-- Allows setting of all fields except hasTransparency and transparentIndex.
-		//	BmpDelete
-		//	BmpCompress			-- Allows changing of compressed, compressionType
-		//	BmpGetColortable
-		//	BmpSize
-		//	BmpBitsSize
-		//	BmpColortableSize
-		//
-		// Therefore, all fields except hasTransparency and transparentIndex
-		// now have read-only access.  Those two fields still have read/write access.
-
-		if (forRead)
-		{
-			return true;
-		}
-		else
-		{
-			emuptr			bitmapP					= bitmap.GetPtr ();
-			size_t			offset					= address - bitmapP;
-
-			const size_t	flags_offset			= EmAliasBitmapTypeV2<PAS>::offsetof_flags ();
-			const size_t	flags_size				= EmAliasUInt16<PAS>::GetSize ();
-
-			const size_t	transparentIndex_offset	= EmAliasBitmapTypeV2<PAS>::offsetof_transparentIndex ();
-			const size_t	transparentIndex_size	= EmAliasUInt8<PAS>::GetSize ();
-
-			if (offset >= flags_offset && offset < flags_offset + flags_size)
-			{
-				return true;
-			}
-
-			if (offset >= transparentIndex_offset && offset < transparentIndex_offset + transparentIndex_size)
-			{
-				return true;
-			}
-		}
-	}
-	else
-	{
-		// The following functions were added in 4.0:
-		//
-		//	BmpGetDimensions
-		//	BmpGetBitDepth
-		//	BmpGetNextBitmap
-		//	BmpGetSizes
-		//
-		// With these, complete supported access to all fields is provided
-		// except for hasTransparency and transparentIndex.
-
-		emuptr			bitmapP					= bitmap.GetPtr ();
-		size_t			offset					= address - bitmapP;
-
-		const size_t	flags_offset			= EmAliasBitmapTypeV2<PAS>::offsetof_flags ();
-		const size_t	flags_size				= EmAliasUInt16<PAS>::GetSize ();
-
-		const size_t	transparentIndex_offset	= EmAliasBitmapTypeV2<PAS>::offsetof_transparentIndex ();
-		const size_t	transparentIndex_size	= EmAliasUInt8<PAS>::GetSize ();
-
-		if (offset >= flags_offset && offset < flags_offset + flags_size)
-		{
-			return true;
-		}
-
-		if (offset >= transparentIndex_offset && offset < transparentIndex_offset + transparentIndex_size)
-		{
-			return true;
-		}
-	}
-
-	// Don't allow access to any other fields.
-
-	return false;
-}
-
-
-static Bool PrvAllowedBitmapAccess (EmAliasBitmapTypeV3<PAS>&, emuptr, Bool)
-{
-	// Access to all fields is provided by accessor functions in all versions
-	// of the OS that support this data structure.
-
-	// Don't allow access to any other fields.
-
-	return false;
-}
-
-
-#pragma mark -
-
-/*
-	In order to track Bitmaps, we have to do some pretty fancy footwork.
-	We need to be able to tell when Bitmaps are allocated and deallocated
-	so that we know which memory blocks to mark as inaccessible.
-
-	One way that a bitmap can be allocated/deallocated is with BmpCreate
-	and BmpDelete.  To support this method, we patch those two functions
-	and call RegisterBitmapPointer and UnregisterBitmapPointer as
-	appropriate.
-
-	The other way that a bitmap can be allocated/deallocated is from a
-	resource.  The resource is read in with DmGetResource or DmGet1Resource,
-	locked with MemHandleLock, unlocked with MemHandleUnlock or MemPtrUnlock
-	(or possibly MemHandleResetLock), and then possibly released with
-	DmReleaseResource.  To support this method, we patch DmGetResource
-	and DmGet1Resource so that we know which handles contain bitmaps (passing
-	them to RegisterBitmapHandle), and MemHandleLock so that we can get the
-	pointer to the bitmap and pass it to RegisterBitmapPointer.  We also
-	monitor MemHandleUnlock, MemPtrUnlock, and MemHandleResetLock so that we
-	can call UnregisterBitmapPointer, and MemHandleFree and MemPtrFree so
-	that we can call UnregisterBitmapHandle.
-
-	With all the handles and pointers registered, we now have the information
-	we need in order to mark the blocks as inaccessible in PrvForEachBitmap.
-*/
-
-// !!! NOTE: bitmap tracking is turned off for now.  The heuristics for
-// determining when to stop tracking a memory handle are incomplete
-// and need to be rethought out.  In particular, the case of installing
-// an application with a color icon, running it, and then trying to
-// re-install that application doesn't work.
-//
-// As well, Poser doesn't handle invalid bitmap families very well.
-// It can easily try to use bogus nextDepthOffset values when stepping
-// to the next icon in the family.
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::RegisterBitmapHandle
-// ---------------------------------------------------------------------------
-
-void MetaMemory::RegisterBitmapHandle (MemHandle /*h*/)
-{
-#if 0
-	if (h && !IsBitmapHandle (h))
-	{
-		MetaMemory::UnmarkUIObjects ();
-		gBitmapHandleList.push_back (h);
-		MetaMemory::MarkUIObjects ();
-	}
-#endif
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::RegisterBitmapPointer
-// ---------------------------------------------------------------------------
-
-void MetaMemory::RegisterBitmapPointer (MemPtr /*p*/)
-{
-#if 0
-	if (p && !IsBitmapPointer (p))
-	{
-		MetaMemory::UnmarkUIObjects ();
-		gBitmapPointerList.push_back (p);
-		MetaMemory::MarkUIObjects ();
-	}
-#endif
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::IsBitmapHandle
-// ---------------------------------------------------------------------------
-
-Bool MetaMemory::IsBitmapHandle (MemHandle h)
-{
-	return h && find (
-		gBitmapHandleList.begin (),
-		gBitmapHandleList.end (), h) != gBitmapHandleList.end ();
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::IsBitmapPointer
-// ---------------------------------------------------------------------------
-
-Bool MetaMemory::IsBitmapPointer (MemPtr p)
-{
-	return p && find (
-		gBitmapPointerList.begin (),
-		gBitmapPointerList.end (), p) != gBitmapPointerList.end ();
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::UnregisterBitmapHandle
-// ---------------------------------------------------------------------------
-
-void MetaMemory::UnregisterBitmapHandle (MemHandle h)
-{
-	if (h)
-	{
-		vector<MemHandle>::iterator	iter = find (
-			gBitmapHandleList.begin (),
-			gBitmapHandleList.end (), h);
-
-		if (iter != gBitmapHandleList.end ())
-		{
-			MetaMemory::UnmarkUIObjects ();
-			gBitmapHandleList.erase (iter);
-			MetaMemory::MarkUIObjects ();
-		}
-	}
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::UnregisterBitmapPointer
-// ---------------------------------------------------------------------------
-
-void MetaMemory::UnregisterBitmapPointer (MemPtr p)
-{
-	if (p)
-	{
-		vector<MemPtr>::iterator	iter = find (
-			gBitmapPointerList.begin (),
-			gBitmapPointerList.end (), p);
-
-		if (iter != gBitmapPointerList.end ())
-		{
-			MetaMemory::UnmarkUIObjects ();
-			gBitmapPointerList.erase (iter);
-			MetaMemory::MarkUIObjects ();
-		}
-	}
-}
-
-
-#pragma mark -
-
-struct EmCheckIterData
-{
-	emuptr	address;
-	size_t	size;
-	Bool	forRead;
-	Bool	isInUIObject;
-	Bool	butItsOK;
-};
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvGetObjectSize
-// ---------------------------------------------------------------------------
-// Get and return the size of the object.  A bitmap object's size is based on
-// the version number in the bitmap.  A window object's size is the size of
-// the memory chunk the window's in.
-
-static int PrvGetObjectSize (emuptr object, int type)
-{
-	int	result = 0;
-
-	if (type == kUIWindow)
-	{
-		// Get the heap the window is in.  Use that to get information about
-		// the chunk the window is in.
-
-		const EmPalmHeap*	heap = EmPalmHeap::GetHeapByPtr ((MemPtr) object);
-
-		// Can't find the heap?  Aip!
-
-		EmAssert (heap != NULL);
-
-		if (!heap)
-			return result;
-
-		// Get information on this chunk so that we can get its size.
-
-		EmPalmChunk	chunk (*heap, object - heap->ChunkHeaderSize ());
-
-		result = chunk.BodySize ();
-	}
-	else if (type == kUIBitmap)
-	{
-		EmAliasBitmapTypeV3<PAS>	bitmapV3 (object);
-
-		if (bitmapV3.version <= 2)
-		{
-			result = EmProxyBitmapTypeV2::GetSize ();
-		}
-		else
-		{
-			result = bitmapV3.size;
-		}
-	}
-	else
-	{
-		EmAssert (false);
-	}
-
-	return result;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvGetNextBitmap
-// ---------------------------------------------------------------------------
-
-static emuptr PrvGetNextBitmap (emuptr p)
-{
-	emuptr	nextBitmap = EmMemNULL;
-
-	EmAliasBitmapTypeV2<PAS>	bitmapV2 (p);
-
-	// If this is a version 3 bitmap, then format the structure as a
-	// version 3 structure and extract the nextDepthOffset field.
-
-	if (bitmapV2.version >= 3)
-	{
-		EmAliasBitmapTypeV3<PAS>	bitmapV3 (p);
-		
-		if (bitmapV3.nextDepthOffset != 0)
-		{
-			nextBitmap = p + bitmapV3.nextDepthOffset * sizeof (UInt32);
-		}
-	}
-
-	// If this is a version 0, 1, or 2 bitmap, extract the
-	// nextDepthOffset field.
-
-	else if (bitmapV2.nextDepthOffset != 0)
-	{
-		nextBitmap = p + bitmapV2.nextDepthOffset * sizeof (UInt32);
-	}
-
-	// If that was NULL, then check to see if this looks like a "dummy"
-	// bitmap used to hide the existance and format of high density
-	// bitmap families from the unprepared application.
-
-	else if (bitmapV2.version == 1 && bitmapV2.pixelSize == 255)
-	{
-		nextBitmap = p + bitmapV2.GetSize ();
-	}
-
-	EmAssert (nextBitmap == EmMemNULL || EmMemCheckAddress (nextBitmap, 0) != false);
-
-	return nextBitmap;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvCheckFormObject
-// ---------------------------------------------------------------------------
-
-static Bool PrvCheckFormObject (EmAliasFormType<PAS>& form,
-						 EmAliasFormObjListType<PAS>& formObject,
-						 EmCheckIterData* data)
-{
-	// Get the form object kind, so that we can determine its size.
-
-	emuptr			formP		= form.GetPtr ();
-	emuptr			formObjectP	= formObject.GetPtr ();
-
-	FormObjectKind	kind		= formObject.objectType;
-	emuptr			objectAddr	= formObject.object;
-
-	static int	kSizeArray[] =
-	{
-		EmAliasFieldType<PAS>::GetSize (),				// frmFieldObj
-		-1,												// frmControlObj
-		EmAliasListType<PAS>::GetSize (),				// frmListObj
-		EmAliasTableType<PAS>::GetSize (),				// frmTableObj
-		EmAliasFormBitmapType<PAS>::GetSize (),			// frmBitmapObj
-		EmAliasFormLineType<PAS>::GetSize (),			// frmLineObj
-		EmAliasFormFrameType<PAS>::GetSize (),			// frmFrameObj
-		EmAliasFormRectangleType<PAS>::GetSize (),		// frmRectangleObj
-		EmAliasFormLabelType<PAS>::GetSize (),			// frmLabelObj
-		EmAliasFormTitleType<PAS>::GetSize (),			// frmTitleObj
-		EmAliasFormPopupType<PAS>::GetSize (),			// frmPopupObj
-		EmAliasFrmGraffitiStateType<PAS>::GetSize (),	// frmGraffitiStateObj
-		EmAliasFormGadgetType<PAS>::GetSize (),			// frmGadgetObj
-		EmAliasScrollBarType<PAS>::GetSize ()			// frmScrollBarObj
-	};
-
-	// If the access was to a form object, flag an error.
-
-	int		itsSize	= kSizeArray[kind];
-
-	if (itsSize < 0)	// Special cases
-	{
-		// Some controls have special sizes.  Determine and use those.
-
-		EmAliasControlType<PAS>	control (objectAddr);
-		uint16	attr	= control.attr.flags;
-		uint8	style	= control.style;
-
-		itsSize	= control.GetSize ();	// Standard ControlType size
-		
-		if (attr & ControlAttrType_graphical)
-		{
-			// It's a GraphicControlType.
-
-			itsSize = EmAliasGraphicControlType<PAS>::GetSize ();
-		}
-		else if (style == sliderCtl || style == feedbackSliderCtl)
-		{
-			// It's a SliderControlType.
-
-			itsSize = EmAliasSliderControlType<PAS>::GetSize ();
-		}
-	}
-
-	// Now check access to the form object.
-
-	if (data->address >= objectAddr && data->address < objectAddr + itsSize)
-	{
-		data->isInUIObject = true;
-
-		if (!::PrvAllowedFormObjectAccess (formObject, data->address, data->forRead))
-		{
-			gSession->ScheduleDeferredError (new EmDeferredErrFormObjectAccess (formObjectP, formP, data->address, data->size, data->forRead));
-			data->butItsOK = false;
-		}
-
-		return true;
-	}
-
-#if 0	// There's no good API for altering the text, and so many developers
-		// write to it "in place".  Allow this for now, until we come up with
-		// a better API.
-
-	// If there's text associated with this object, check access to it, too.
-	// Allow read access, since some functions (like CtrlGetLabel) return
-	// pointers to the text that the application will expect to access.
-
-	emuptr	textPtr = EmMemNULL;
-
-	switch (kind)
-	{
-		case frmControlObj:
-		{
-			EmAliasControlType<PAS>	control (objectAddr);
-			uint16	attr	= control.attr.flags;
-			uint8	style	= control.style;
-			
-			if (attr & ControlAttrType_graphical)
-			{
-				// No text with graphical controls.
-			}
-			else if (style == sliderCtl || style == feedbackSliderCtl)
-			{
-				// No text with slider controls.
-			}
-			else
-			{
-				textPtr = control.text;
-			}
-
-			break;
-		}
-
-		case frmLabelObj:
-		{
-			EmAliasFormLabelType<PAS>	label (objectAddr);
-			textPtr = label.text;
-			break;
-		}
-
-		case frmTitleObj:
-		{
-			EmAliasFormTitleType<PAS>	title (objectAddr);
-			textPtr = title.text;
-			break;
-		}
-
-		case frmFieldObj:	// Yes, there's text associated with this object,
-							// but it's never in the same memory chunk as the
-							// form and its objects, and so will not currently
-							// get marked as off limits.
-		case frmListObj:
-		case frmTableObj:
-		case frmBitmapObj:
-		case frmLineObj:
-		case frmFrameObj:
-		case frmRectangleObj:
-		case frmPopupObj:
-		case frmGraffitiStateObj:
-		case frmGadgetObj:
-		case frmScrollBarObj:
-			break;
-	}
-
-	if (textPtr && !data->forRead)
-	{
-		size_t	textSize = EmMem_strlen (textPtr) + 1;
-
-		if (data->address >= textPtr && data->address < textPtr + textSize)
-		{
-			data->isInUIObject = true;
-
-			if (!::PrvAllowedFormObjectAccess (formObject, data->address, data->forRead))
-			{
-				gSession->ScheduleDeferredError (new EmDeferredErrFormObjectAccess (formObjectP, formP, data->address, data->size, data->forRead));
-				data->butItsOK = false;
-			}
-
-			return true;
-		}
-	}
-#endif
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvCheckForm
-// ---------------------------------------------------------------------------
-
-static Bool PrvCheckForm (EmAliasFormType<PAS>& form, EmCheckIterData* data)
-{
-	// If the access was to the form, flag an error.
-
-	emuptr	formP	= form.GetPtr ();
-	size_t	size	= form.GetSize ();
-
-	if (data->address >= formP && data->address < formP + size)
-	{
-		data->isInUIObject = true;
-
-		if (!::PrvAllowedFormAccess (formP, data->address, data->forRead))
-		{
-			gSession->ScheduleDeferredError (new EmDeferredErrFormAccess (formP, data->address, data->size, data->forRead));
-			data->butItsOK = false;
-		}
-
-		return true;
-	}
-
-	// If the access was to the form item list, flag an error.
-
-	// Get the number of objects in the form.  Use this value to determine
-	// the range of memory the form spans.
-
-	uint16	numObjects	= form.numObjects;
-	emuptr	firstObject	= form.objects;
-	emuptr	lastObject	= firstObject + numObjects * EmAliasFormObjListType<PAS>::GetSize ();
-
-	if (data->address >= firstObject && data->address < lastObject)
-	{
-		data->isInUIObject = true;
-
-		if (!::PrvAllowedFormAccess (formP, data->address, data->forRead))
-		{
-			gSession->ScheduleDeferredError (new EmDeferredErrFormAccess (formP, data->address, data->size, data->forRead));
-			data->butItsOK = false;
-		}
-
-		return true;
-	}
-
-	// Walk the objects in the form.  Check each one to see
-	// if the access was made to one of them.
-
-	emuptr	thisObject = firstObject;
-
-	for (int ii = 0; ii < numObjects; ++ii)
-	{
-		EmAliasFormObjListType<PAS>	formObject (thisObject);
-
-		if (::PrvCheckFormObject (form, formObject, data))
-			return true;
-
-		// Go to the next form object.
-
-		thisObject += formObject.GetSize ();
-	}
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvCheckWindow
-// ---------------------------------------------------------------------------
-
-static Bool PrvCheckWindow (EmAliasWindowType<PAS>& window, EmCheckIterData* data)
-{
-	// Plain old window.  Check the access against the window size.
-	// While a couple of the fields of WindowTyp have changed from
-	// Palm OS 1.0 to 4.0 (viewOrigin has changed to bitMapP, gstate
-	// has changed to drawStateP, and compressed has changed to
-	// freeBitmap), the size is still the same.
-
-	emuptr	windowP = window.GetPtr ();
-	size_t	size	= window.GetSize ();
-
-	if (data->address >= windowP && data->address < windowP + size)
-	{
-		data->isInUIObject = true;
-
-		if (!::PrvAllowedWindowAccess (windowP, data->address, data->forRead))
-		{
-			gSession->ScheduleDeferredError (new EmDeferredErrWindowAccess (windowP, data->address, data->size, data->forRead));
-			data->butItsOK = false;
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvCheckBitmap
-// ---------------------------------------------------------------------------
-
-static Bool PrvCheckBitmap (EmAliasBitmapTypeV2<PAS>& bitmapV2, EmCheckIterData* data)
-{
-	emuptr	bitmapP	= bitmapV2.GetPtr ();
-	size_t	size	= bitmapV2.GetSize ();
-
-	if (data->address >= bitmapP && data->address < bitmapP + size)
-	{
-		data->isInUIObject = true;
-
-		if (!::PrvAllowedBitmapAccess (bitmapV2, data->address, data->forRead))
-		{
-			gSession->ScheduleDeferredError (new EmDeferredErrBitmapAccess (bitmapP, data->address, data->size, data->forRead));
-			data->butItsOK = false;
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvCheckBitmap
-// ---------------------------------------------------------------------------
-
-static Bool PrvCheckBitmap (EmAliasBitmapTypeV3<PAS>& bitmapV3, EmCheckIterData* data)
-{
-	emuptr	bitmapP	= bitmapV3.GetPtr ();
-	size_t	size	= bitmapV3.size;
-
-	if (data->address >= bitmapP && data->address < bitmapP + size)
-	{
-		data->isInUIObject = true;
-
-		if (!::PrvAllowedBitmapAccess (bitmapV3, data->address, data->forRead))
-		{
-			gSession->ScheduleDeferredError (new EmDeferredErrBitmapAccess (bitmapP, data->address, data->size, data->forRead));
-			data->butItsOK = false;
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvCheckUIObject
+//		¥ CheckUIObjectAccess
 // ---------------------------------------------------------------------------
 // Check to see if the given access is in a proscribed area of memory.  Will
 // first check to see if:
@@ -3451,242 +2498,236 @@ static Bool PrvCheckBitmap (EmAliasBitmapTypeV3<PAS>& bitmapV3, EmCheckIterData*
 // a proscribed access is indeed made, a "deferred error" object is posted
 // to the session.
 
-Bool PrvCheckUIObject (emuptr objectP, void* d, int type)
+void MetaMemory::CheckUIObjectAccess (emuptr address, size_t size, Bool forRead,
+									  Bool& isInUIObject, Bool& butItsOK)
 {
-	// Walk the window list, looking for windows and forms
+	isInUIObject	= false;
+	butItsOK		= true;
 
-	EmAssert (d);
-	EmCheckIterData*	data = (EmCheckIterData*) d;
-
-	if (type == kUIWindow)
-	{
-		// See if this window is a plain window, or a form.
-
-		EmAliasWindowType<PAS>	window (objectP);
-		uint16	flags = window.windowFlags.flags;
-
-		if (flags & WindowFlagsType_dialog)
-		{
-			// It's a form.
-
-			EmAliasFormType<PAS>	form (objectP);
-
-			if (::PrvCheckForm (form, data))
-				return true;
-		}
-		else
-		{
-			// It's a plain old window.
-
-			if (::PrvCheckWindow (window, data))
-				return true;
-		}
-	}
-	else if (type == kUIBitmap)
-	{
-		EmAliasBitmapTypeV2<PAS>	bitmapV2 (objectP);
-
-		if (bitmapV2.version <= 2)
-		{
-			if (::PrvCheckBitmap (bitmapV2, data))
-				return true;
-		}
-		else
-		{
-			EmAliasBitmapTypeV3<PAS>	bitmapV3 (objectP);
-
-			if (::PrvCheckBitmap (bitmapV3, data))
-				return true;
-		}
-	}
-	else
-	{
-		EmAssert (false);
-	}
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvMarkUIObject
-// ---------------------------------------------------------------------------
-// Get the size of the UI object, use it to get the end of the object, and
-// mark the whole thing as off-limits.
-
-Bool PrvMarkUIObject (emuptr object, void* /*data*/, int type)
-{
-	emuptr	begin	= object;
-	emuptr	end		= begin + ::PrvGetObjectSize (object, type);
-
-	MetaMemory::MarkUIObject (begin, end);
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvUnmarkUIObject
-// ---------------------------------------------------------------------------
-// Get the size of the UI object, use it to get the end of the object, and
-// mark the whole thing as accessible.
-
-static Bool PrvUnmarkUIObject (emuptr object, void* /*data*/, int type)
-{
-	emuptr	begin	= object;
-	emuptr	end		= begin + ::PrvGetObjectSize (object, type);
-
-	MetaMemory::UnmarkUIObject (begin, end);
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvForEachWindow
-// ---------------------------------------------------------------------------
-// Iterate over all window objects, calling a generic iteration function for
-// each one.  If the iteration function returns true, that means that the
-// iteration should stop.  This function returns true or false to indicate if
-// the iteration was aborted.
-
-Bool PrvForEachWindow (IterFn fn, void* data)
-{
 	// If the UI is not initialized for this application, the FirstWindow
 	// pointer in uiGlobals will be non-NULL, but invalid (it will point
 	// to the FirstWindow for the previous application, which has been
 	// disposed of by now).  Wait until UIReset has been called.
 
-	if (!EmPatchState::UIReset ())
-		return false;
+	if (!Patches::UIReset ())
+		return;
 
 	// Walk the window list, looking for windows and forms
 
 	emuptr	w = EmLowMem_GetGlobal (uiGlobals.firstWindow);
 	while (w)
 	{
-		if (fn (w, data, kUIWindow))
-			return true;
+		// See if this window is a plain window, or a dialog.
+
+		EmAliasWindowType<PAS>	window (w);
+		uint16	flags = window.windowFlags.flags;
+
+		if (flags & WindowFlagsType_dialog)
+		{
+			// It's a dialog.
+
+			EmAliasFormType<PAS>	dialog (w);
+
+			// Get the number of objects in the dialog.  Use this value to determine
+			// the range of memory the dialog spans.
+
+			uint16	numObjects	= dialog.numObjects;
+			emuptr	firstObject	= dialog.objects;
+			emuptr	lastObject	= firstObject + numObjects * EmAliasFormObjListType<PAS>::GetSize ();
+
+			// If the access was to the dialog, flag an error.
+
+			if (address >= w && address < w + EmAliasFormType<PAS>::GetSize ())
+			{
+				isInUIObject = true;
+
+				if (!::PrvAllowedFormAccess (w, address, forRead))
+				{
+					gSession->ScheduleDeferredError (new EmDeferredErrFormAccess (w, address, size, forRead));
+					butItsOK = false;
+				}
+
+				return;
+			}
+
+			// If the access was to the dialog item list, flag an error.
+
+			if (address >= firstObject && address < lastObject)
+			{
+				isInUIObject = true;
+
+				if (!::PrvAllowedFormAccess (w, address, forRead))
+				{
+					gSession->ScheduleDeferredError (new EmDeferredErrFormAccess (w, address, size, forRead));
+					butItsOK = false;
+				}
+
+				return;
+			}
+
+			// Walk the objects in the dialog.  Check each one to see
+			// if the access was made to one of them.
+
+			emuptr	thisObject = firstObject;
+
+			for (int ii = 0; ii < numObjects; ++ii)
+			{
+				// Get the form object kind, so that we can determine its size.
+
+				EmAliasFormObjListType<PAS>	object (thisObject);
+				FormObjectKind				kind		= object.objectType;
+				emuptr						objectAddr	= object.object;
+
+				static int	kSizeArray[] =
+				{
+					EmAliasFieldType<PAS>::GetSize (),				// frmFieldObj
+					-1,												// frmControlObj
+					EmAliasListType<PAS>::GetSize (),				// frmListObj
+					EmAliasTableType<PAS>::GetSize (),				// frmTableObj
+					EmAliasFormBitmapType<PAS>::GetSize (),			// frmBitmapObj
+					EmAliasFormLineType<PAS>::GetSize (),			// frmLineObj
+					EmAliasFormFrameType<PAS>::GetSize (),			// frmFrameObj
+					EmAliasFormRectangleType<PAS>::GetSize (),		// frmRectangleObj
+					EmAliasFormLabelType<PAS>::GetSize (),			// frmLabelObj
+					EmAliasFormTitleType<PAS>::GetSize (),			// frmTitleObj
+					EmAliasFormPopupType<PAS>::GetSize (),			// frmPopupObj
+					EmAliasFrmGraffitiStateType<PAS>::GetSize (),	// frmGraffitiStateObj
+					EmAliasFormGadgetType<PAS>::GetSize (),			// frmGadgetObj
+					EmAliasScrollBarType<PAS>::GetSize ()			// frmScrollBarObj
+				};
+
+				// If the access was to a form object, flag an error.
+
+				int		itsSize	= kSizeArray[kind];
+
+				if (itsSize < 0)	// Special cases
+				{
+					// Some controls have special sizes.  Determine and use those.
+
+					EmAliasControlType<PAS>	control (objectAddr);
+					uint16	attr	= control.attr.flags;
+					uint8	style	= control.style;
+
+					itsSize	= control.GetSize ();	// Standard ControlType size
+					
+					if (attr & ControlAttrType_graphical)
+					{
+						// It's a GraphicControlType.
+
+						itsSize = EmAliasGraphicControlType<PAS>::GetSize ();
+					}
+					else if (style == sliderCtl || style == feedbackSliderCtl)
+					{
+						// It's a SliderControlType.
+
+						itsSize = EmAliasSliderControlType<PAS>::GetSize ();
+					}
+				}
+
+				// Now check the size.
+
+				if (address >= objectAddr && address < objectAddr + itsSize)
+				{
+					isInUIObject = true;
+
+					if (!::PrvAllowedFormObjectAccess (thisObject, address, forRead))
+					{
+						gSession->ScheduleDeferredError (new EmDeferredErrFormObjectAccess (thisObject, w, address, size, forRead));
+						butItsOK = false;
+					}
+
+					return;
+				}
+
+				// Go to the next form object.
+
+				thisObject += object.GetSize ();
+			}
+		}
+		else
+		{
+			// Plain old window.  Check the access against the window size.
+			// While a couple of the fields of WindowTyp have changed from
+			// Palm OS 1.0 to 4.0 (viewOrigin has changed to bitMapP, gstate
+			// has changed to drawStateP, and compressed has changed to
+			// freeBitmap), the size is still the same.
+
+			if (address >= w && address < w + window.GetSize ())
+			{
+				isInUIObject = true;
+
+				if (!::PrvAllowedWindowAccess (w, address, forRead))
+				{
+					gSession->ScheduleDeferredError (new EmDeferredErrWindowAccess (w, address, size, forRead));
+					butItsOK = false;
+				}
+
+				return;
+			}
+		}
+
+		// Go to the next window.
+
+		w = window.nextWindow;
+	}
+}
+
+typedef void (*MarkerFn) (emuptr begin, emuptr end);
+
+static void PrvForEachWindow (MarkerFn fn)
+{
+	// If the UI is not initialized for this application, the FirstWindow
+	// pointer in uiGlobals will be non-NULL, but invalid (it will point
+	// to the FirstWindow for the previous application, which has been
+	// disposed of by now).  Wait until UIReset has been called.
+
+	if (!Patches::UIReset ())
+		return;
+
+	// Give us full access to memory.
+
+	CEnableFullAccess	munge;
+
+	// Walk the window list, looking for windows and forms
+
+	emuptr	w = EmLowMem_GetGlobal (uiGlobals.firstWindow);
+	while (w)
+	{
+		// Get the heap the resource is in.  Use that to get information about
+		// the chunk the resource is in.
+
+		const EmPalmHeap*	heap = EmPalmHeap::GetHeapByPtr ((MemPtr) w);
+
+		// Can't find the heap?  Aip!
+
+		EmAssert (heap != NULL);
+
+		if (!heap)
+			return;
+
+		// Get information on this chunk so that we can get its size.
+
+		EmPalmChunk	chunk (*heap, w - heap->ChunkHeaderSize ());
+
+		fn (w, w + chunk.BodySize ());
 
 		// Go to the next window.
 
 		EmAliasWindowType<PAS>	window (w);
 		w = window.nextWindow;
 	}
-
-	return false;
 }
 
-
-// ---------------------------------------------------------------------------
-//		¥ PrvForEachBitmap
-// ---------------------------------------------------------------------------
-// Iterate over all bitmap objects, calling a generic iteration function for
-// each one.  If the iteration function returns true, that means that the
-// iteration should stop.  This function returns true or false to indicate if
-// the iteration was aborted.
-
-Bool PrvForEachBitmap (IterFn /*fn*/, void* /*data*/)
-{
-#if 0
-	// Iterate over each bitmap in our list.
-
-	vector<MemPtr>::iterator	iter = gBitmapPointerList.begin ();
-	while (iter != gBitmapPointerList.end ())
-	{
-		emuptr	p = (emuptr) *iter;
-
-		// Iterate over each bitmap in the bitmap family.
-
-		while (p)
-		{
-			if (fn (p, data, kUIBitmap))
-				return true;
-
-			p = ::PrvGetNextBitmap (p);
-		}
-
-		++iter;
-	}
-#endif
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvForEachUIObject
-// ---------------------------------------------------------------------------
-// Iterate over all UI objects, calling a generic iteration function for each
-// one.  If the iteration function returns true, that means that the iteration
-// should stop.  This function returns true or false to indicate if the
-// iteration was aborted.
-
-Bool PrvForEachUIObject (IterFn fn, void* data)
-{
-	// Give us full access to memory.
-
-	CEnableFullAccess	munge;
-
-	// Check windows and forms.
-
-	if (::PrvForEachWindow (fn, data))
-		return true;
-
-	// Check bitmaps.
-
-	if (::PrvForEachBitmap (fn, data))
-		return true;
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ CheckUIObjectAccess
-// ---------------------------------------------------------------------------
-// Iterate over all UI objects, calling a function that will check to see
-// which -- if any -- object was accessed and if that access was OK.
-
-void MetaMemory::CheckUIObjectAccess (emuptr address, size_t size, Bool forRead,
-									  Bool& isInUIObject, Bool& butItsOK)
-{
-	EmCheckIterData	data;
-
-	data.address		= address;
-	data.size			= size;
-	data.forRead		= forRead;
-	data.isInUIObject	= false;
-	data.butItsOK		= true;
-
-	::PrvForEachUIObject (&::PrvCheckUIObject, &data);
-
-	isInUIObject		= data.isInUIObject;
-	butItsOK			= data.butItsOK;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::MarkUIObjects
-// ---------------------------------------------------------------------------
-// Iterate over all UI objects, calling a function that will mark each one
-// as off limits to applications.
 
 void MetaMemory::MarkUIObjects (void)
 {
-	::PrvForEachUIObject (&::PrvMarkUIObject, NULL);
+	::PrvForEachWindow (&MarkUIObject);
 }
 
 
-// ---------------------------------------------------------------------------
-//		¥ MetaMemory::UnmarkUIObjects
-// ---------------------------------------------------------------------------
-// Iterate over all UI objects, calling a function that will mark each one
-// as accessible to applications.
-
 void MetaMemory::UnmarkUIObjects (void)
 {
-	::PrvForEachUIObject (&::PrvUnmarkUIObject, NULL);
+	::PrvForEachWindow (&UnmarkUIObject);
 }
 
 
@@ -3732,113 +2773,16 @@ static emuptr PrvGetRAMDatabaseDirectory(void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ PrvIsOKCharacter
-// ---------------------------------------------------------------------------
-
-static inline Bool PrvIsOKCharacter (char ch)
-{
-	return islower (ch);
-}
-
-
-// ---------------------------------------------------------------------------
 //		¥ PrvIsLowerCaseCreator
 // ---------------------------------------------------------------------------
 // Return whether or not the given creator is composed of all lower-case
 // letters (as defined by the islower macro in ctypes.h).
 
-static inline Bool PrvIsLowerCaseCreator (UInt32 creator)
+static Bool PrvIsLowerCaseCreator (UInt32 creator)
 {
 	const char*	p = (const char*) &creator;
 
-	return	PrvIsOKCharacter (p[0]) &&
-			PrvIsOKCharacter (p[1]) &&
-			PrvIsOKCharacter (p[2]) &&
-			PrvIsOKCharacter (p[3]);
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvIsPalmCreator
-// ---------------------------------------------------------------------------
-
-static Bool PrvIsPalmCreator (UInt32 creator)
-{
-	// Creator IDs consisting of all lowercase letters are reserved for use
-	// by Palm Inc.  Additionally, it has reserved the following creator
-	// IDs, as of 8/17/01.
-
-	static const UInt32 kNonStandardCreators[] =
-	{
-		'a68k',
-		'mfx1',
-		'u328',
-		'u650',
-		'u8EZ'
-	};
-
-	// Check to see if the creator ID follows the Palm standard.  If so,
-	// return TRUE.
-
-	if (::PrvIsLowerCaseCreator (creator))
-	{
-		return true;
-	}
-
-	// See if the creator is in the list of creators registered by
-	// Palm that don't follow the Palm standard.  If so, return TRUE.
-
-	for (size_t ii = 0; ii < countof (kNonStandardCreators); ++ii)
-	{
-		if (creator == kNonStandardCreators[ii])
-		{
-			return true;
-		}
-	}
-
-	// It's not a Palm creator.  Return FALSE.
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ PrvIsRegisteredPalmCreator
-// ---------------------------------------------------------------------------
-
-static Bool PrvIsRegisteredPalmCreator (UInt32 creator)
-{
-	// Registered Palm applications as of 8/17/01.
-
-	static const UInt32 kPalmRegisteredCreators[] =
-	{
-		'a68k',		'actv',		'addr',		'blth',		'btcp',
-		'btex',		'bttn',		'bttx',		'calc',		'cinf',
-		'clpr',		'date',		'dbmn',		'dial',		'dict',
-		'digi',		'dmfx',		'dttm',		'econ',		'expn',
-		'exps',		'fatf',		'fins',		'flsh',		'fone',
-		'frmt',		'gafd',		'gdem',		'gnrl',		'graf',
-		'gsmf',		'hidd',		'hpad',		'hrel',		'hssu',
-		'htcp',		'inet',		'ircm',		'irda',		'iwrp',
-		'lnch',		'locl',		'lpkr',		'mail',		'mdem',
-		'memo',		'memr',		'mfgc',		'mfgf',		'mfx1',
-		'mine',		'mmfx',		'modm',		'msgs',		'netl',
-		'netp',		'nett',		'netw',		'olbi',		'ownr',
-		'patd',		'pdil',		'pdvc',		'phop',		'ping',
-		'pnps',		'poem',		'port',		'pref',		'psys',
-		'ptch',		'pusb',		'puzl',		'rfcm',		'rfdg',
-		'sdsd',		'secl',		'secr',		'setp',		'shct',
-		'smgr',		'smsl',		'smsm',		'spht',		'srvr',
-		'stgd',		'swrp',		'sync',		'tmgr',		'todo',
-		'tsml',		'u328',		'u650',		'u8EZ',		'udic',
-		'usbc',		'usbd',		'usbp',		'vfsm',		'wclp',
-		'webl',		'wwww'
-	};
-
-	const UInt32*	begin	= &kPalmRegisteredCreators[0];
-	const UInt32*	end		= &kPalmRegisteredCreators[countof (kPalmRegisteredCreators)];
-
-	return binary_search (begin, end, creator);
+	return islower (p[0]) && islower (p[1]) && islower (p[2]) && islower (p[3]);
 }
 
 
@@ -3903,8 +2847,6 @@ void MetaMemory::ChunkUnlocked (emuptr addr)
 }
 
 
-#pragma mark -
-
 // ---------------------------------------------------------------------------
 //		¥ PrvIsSystemDatabase
 // ---------------------------------------------------------------------------
@@ -3918,11 +2860,9 @@ static Bool PrvIsSystemDatabase (UInt32 type, UInt32 creator)
 	if ((type == sysFileTExtension) ||
 		(type == sysFileTLibrary) ||
 		(type == sysFileTPanel) ||
-		(type == sysFileTSystemPatch) ||
-		(type == sysFileTHtalLib) ||	// NetSync.prc if is of this type (creator == sysFileCTCPHtal)
-		(type == 'bttx'))				// Bluetooth Extension
+		(type == sysFileTSystemPatch))
 	{
-		isSystemDatabase = ::PrvIsPalmCreator (creator);
+		isSystemDatabase = ::PrvIsLowerCaseCreator (creator);
 	}
 	else if (type == sysFileTApplication)
 	{
@@ -3933,7 +2873,7 @@ static Bool PrvIsSystemDatabase (UInt32 type, UInt32 creator)
 		// application had all-lower-case creators (and more than
 		// one of those was 'memo'!).
 
-		isSystemDatabase = ::PrvIsRegisteredPalmCreator (creator);
+		isSystemDatabase = (creator == sysFileCClipper);
 	}
 
 	// Handspring has RAM-based extensions that access system globals
@@ -3950,9 +2890,9 @@ static Bool PrvIsSystemDatabase (UInt32 type, UInt32 creator)
 	//		The HsExtensions.prc is type 'HsPt' creator 'HsEx' and
 	//		the Hal.prc is type 'HwAl' creator 'HsEx'.
 
-	else if (creator == 'HsEx' && (type == 'HsPt' || type == 'HwAl'))
+	else if (creator == 'HsEx')
 	{
-		isSystemDatabase = true;
+		isSystemDatabase = (type == 'HsPt' || type == 'HsEx');
 	}
 
 	return isSystemDatabase;

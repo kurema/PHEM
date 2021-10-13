@@ -39,9 +39,7 @@
 
 typedef uint32				emuptr;
 
-// Changed from typedef to avoid conflict with X Window 'Bool' type
-// Caused problem with EmDlgFltkFactory.fl compile
-#define Bool int
+typedef int 				Bool;
 
 typedef int32				ErrCode;
 typedef int32				StrCode;
@@ -88,15 +86,5 @@ enum EmResetType
 	kResetHardNoExt		= kResetNoExt | kResetHard,	// Same as kResetHard with Page Up key down.
 	kResetDebugNoExt	= kResetNoExt | kResetDebug	// Same as kResetDebug with Page Up key down.
 };
-
-
-enum EmErrorHandlingOption
-{
-	kShow,
-	kContinue,
-	kQuit,
-	kSwitch
-};
-
 
 #endif	// EmTypes_h

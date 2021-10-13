@@ -180,16 +180,20 @@ uint32 EmRegsPLDPalmVIIEZ::GetAddressRange (void)
 
 void EmRegsPLDPalmVIIEZ::rs232ShdnWrite (emuptr address, int size, uint32 value)
 {
-	// Take a snapshot of the line driver states.
+	// First, get the old value in case we need to see what changed.
 
-	Bool	driverStates[kUARTEnd];
-	EmHAL::GetLineDriverStates (driverStates);
+	Bool	irWasOn			= EmHAL::GetIRPortOn (0);
+	Bool	serialWasOn		= EmHAL::GetSerialPortOn (0);
 
 	StdWriteBE (address, size, value);
 
-	// Respond to any changes in the line driver states.
+	Bool	irIsOn			= EmHAL::GetIRPortOn (0);
+	Bool	serialIsOn		= EmHAL::GetSerialPortOn (0);
 
-	EmHAL::CompareLineDriverStates (driverStates);
+	if (serialWasOn != serialIsOn || irWasOn != irIsOn)
+	{
+		EmHAL::LineDriverChanged (0);
+	}
 }
 
 

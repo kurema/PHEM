@@ -389,10 +389,6 @@ extern Err	DlkGetSyncInfo(UInt32 * succSyncDateP, UInt32 * lastSyncDateP,
 			Char * logBufP, Int32 * logLenP)
 							SYS_TRAP(sysTrapDlkGetSyncInfo);
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER... this is a temporary function for debugging modem manager.
-// remove it when done.
-#endif // PUBLIC_STUFF_STRIPPED
 extern void	DlkSetLogEntry(const Char * textP, Int16 textLen, Boolean append)
 							SYS_TRAP(sysTrapDlkSetLogEntry);
 

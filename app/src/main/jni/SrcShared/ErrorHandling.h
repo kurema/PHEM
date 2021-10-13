@@ -85,7 +85,7 @@ class Errors
 		static void				ReportIfNULL		(StrCode operation, void* p, StrCode recovery = 0, Bool throwAfter = true);
 
 
-		// Report that the indicated error condition occurred.  Messages are generally
+		// Report that the indicated error condition occured.  Messages are generally
 		// of the form "<Application> <version> just tried to <foo>. <More explanatory
 		// text>. Report this to the program author."
 
@@ -128,7 +128,6 @@ class Errors
 		static void				ReportErrHardwareRegisters	(emuptr address, long size, Bool forRead);
 		static void				ReportErrROM				(emuptr address, long size, Bool forRead);
 		static void				ReportErrMemMgrStructures	(emuptr address, long size, Bool forRead);
-		static void				ReportErrMemMgrLeaks		(int leaks);
 		static void				ReportErrMemMgrSemaphore	(void);
 		static void				ReportErrFreeChunk			(emuptr address, long size, Bool forRead);
 		static void				ReportErrUnlockedChunk		(emuptr address, long size, Bool forRead);
@@ -139,14 +138,12 @@ class Errors
 		static void				ReportErrFormAccess			(emuptr formAddress, emuptr address, long size, Bool forRead);
 		static void				ReportErrFormObjectAccess	(emuptr objectAddress, emuptr formAddress, emuptr address, long size, Bool forRead);
 		static void				ReportErrWindowAccess		(emuptr windowAddress, emuptr address, long size, Bool forRead);
-		static void				ReportErrBitmapAccess		(emuptr bitmapAddress, emuptr address, long size, Bool forRead);
-		static void				ReportErrProscribedFunction	(const SystemCallContext&);
 		static void				ReportErrStepSpy			(emuptr writeAddress, int writeBytes, emuptr ssAddress, uint32 ssValue, uint32 newValue);
 		static void				ReportErrWatchpoint			(emuptr writeAddress, int writeBytes, emuptr watchAddress, uint32 watchBytes);
 
 			// Palm OS-detected errors
 
-		static void				ReportErrSysFatalAlert		(const char* appMsg);
+		static EmDlgItemID		ReportErrSysFatalAlert		(const char* appMsg);
 		static void				ReportErrDbgMessage			(const char* appMsg);
 
 			// Helper functions for handling reporting of similar errors.
@@ -156,8 +153,6 @@ class Errors
 		static void				ReportErrOpcodeCommon		(StrCode, ExceptionNumber, int flags, uint16 opcode);
 		static void				ReportErrStackCommon		(StrCode, ExceptionNumber, int flags);
 		static void				ReportErrCommon				(StrCode, ExceptionNumber, int flags);
-		static EmDlgItemID		ReportErrCommPort			(string);
-		static EmDlgItemID		ReportErrSockets			(string);
 
 		enum
 		{
@@ -206,7 +201,7 @@ class Errors
 		// the given flags.  Returns which button was clicked.
 
 		static EmDlgItemID		DoDialog			(StrCode messageID, EmCommonDialogFlags);
-		static EmDlgItemID		DoDialog			(const char* msg, EmCommonDialogFlags, StrCode messageID = -1);
+		static EmDlgItemID		DoDialog			(const char* msg, EmCommonDialogFlags);
 
 
 		// Creates and returns a string based on the string template and
@@ -219,17 +214,17 @@ class Errors
 
 		// Convert error numbers into string IDs that describe the error.
 
-		static int				GetIDForError		(ErrCode error);
-		static int				GetIDForRecovery	(ErrCode error);
+		static int				GetIDForError			(ErrCode error);
+		static int				GetIDForRecovery		(ErrCode error);
 
 
 		// Get the name and version of the current application.
 
-		static void				GetAppName			(string& appNameUC,
-													 string& appNameLC);
-		static void				GetAppVersion		(string& appVersion);
+		static void				GetAppName				(string& appNameUC,
+														 string& appNameLC);
+		static void				GetAppVersion			(string& appVersion);
 
-		static Bool				LooksLikeA5Access	(emuptr address, long size, Bool forRead);
+		static Bool				LooksLikeA5Access		(emuptr address, long size, Bool forRead);
 
 
 		// If an error condition is detected, throws an error number.
@@ -446,31 +441,6 @@ class EmDeferredErrWindowAccess : public EmDeferredErrAccessCommon
 		virtual void			Do								(void);
 
 		emuptr					fWindowAddress;
-};
-
-class EmDeferredErrBitmapAccess : public EmDeferredErrAccessCommon
-{
-	public:
-								EmDeferredErrBitmapAccess		(emuptr bitmapAddress,
-																 emuptr address,
-																 long size,
-																 Bool forRead);
-		virtual					~EmDeferredErrBitmapAccess		(void);
-
-		virtual void			Do								(void);
-
-		emuptr					fBitmapAddress;
-};
-
-class EmDeferredErrProscribedFunction : public EmDeferredErr
-{
-	public:
-								EmDeferredErrProscribedFunction	(const SystemCallContext&);
-		virtual					~EmDeferredErrProscribedFunction(void);
-
-		virtual void			Do								(void);
-
-		SystemCallContext		fContext;
 };
 
 class EmDeferredErrStepSpy : public EmDeferredErr

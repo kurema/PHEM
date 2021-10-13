@@ -489,7 +489,6 @@ private:
     state_t _state;
     priority_t _priority;
 
-	static omni_thread* root_thread;
     static omni_mutex* next_id_mutex;
     static int next_id;
     int _id;
@@ -528,7 +527,6 @@ public:
 	static int count;
     public:
 	init_t(void);
-	~init_t (void);
     };
 
     friend class init_t;

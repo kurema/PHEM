@@ -14,15 +14,15 @@
 #include "EmCommon.h"
 #include "EmMenus.h"
 
-#include "EmApplication.h"		// IsBoundPartially
 #include "EmFileRef.h"			// EmFileRefList
-#include "EmPatchState.h"		// EmPatchState::UIInitialized
 #include "EmSession.h"			// gSession
 #include "Hordes.h"				// Hordes::CanNew, etc.
+#include "Miscellaneous.h"		// IsBoundPartially
 #include "Platform.h"			// Platform::GetString
 #include "PreferenceMgr.h"		// gEmuPrefs
 #include "Profiling.h"			// ProfileCanStart, etc.
 #include "Strings.r.h"			// kStr_Menu...
+#include "TrapPatches.h"		// Patches::UIInitialized
 
 // ---------------------------------------------------------------------------
 
@@ -42,15 +42,16 @@ static EmMenuID	PrvPreferredMenuID	(EmMenuID);
 #pragma mark -
 #pragma mark Private Globals
 
-static EmMenu	gMenuMenubar;
-static EmMenu	gMenuPartiallyBoundMenubar;
-static EmMenu	gMenuFullyBoundMenubar;
+static EmMenuItemList	gMenuMenubar;
+static EmMenuItemList	gMenuPartiallyBoundMenubar;
+static EmMenuItemList	gMenuFullyBoundMenubar;
 
-static EmMenu	gMenuPopupMenu;
-static EmMenu	gMenuPartiallyBoundPopupMenu;
-static EmMenu	gMenuFullyBoundPopupMenu;
+static EmMenuItemList	gMenuPopupMenu;
+static EmMenuItemList	gMenuPartiallyBoundPopupMenu;
+static EmMenuItemList	gMenuFullyBoundPopupMenu;
 
-static unsigned long	gChangeCount;
+static Bool				gSessionMRUDirty	= true;
+static Bool				gDatabaseMRUDirty	= true;
 
 // ---------------------------------------------------------------------------
 // This array is accessed by index using the values in EmMenuItemID.  Thus,
@@ -121,75 +122,45 @@ struct EmPrvMenuItem
 
 	Hmmm...that leaves: D, E, J, K, L, R, and Y for anything else!
 
-		A |	
-		B |	Breakpoints
-		C |	Copy
-		D |	Download ROM
-		E |	Error Handling
-		F |	
-		G |	
-		H |	HotSync
-		I |	Import Database
-		J |	
-		K |	Skins
-		L |	Logging Options
-		M |	Save Screen
-		N |	New Session
-		O |	Open Session
-		P |	
-		Q |	Quit
-		R |	Reset
-		S |	Save Session
-		T |	Tracing Options
-		U |	
-		V |	Paste
-		W |	Close Session
-		X |	Cut
-		Y |	
-		Z |	Undo
-		/ | Preferences
-		\ | Debuging Options
-		[ | Profile Start
-		] | Profile Stop
-
 	===============================
 	Accelerator key mappings
 	===============================
 
-		--+-----------------------------------------------------------------------------+--
-		  |	Top level	Reset	Open	Import	Settings	Gremlins	Profile	Edit	|
-		--+-----------------------------------------------------------------------------+--
-		A |	Save As																		| A
-		B |	Save Bound							Breakpoints								| B
-		C |	Close		Cold													Copy	| C
-		D |	Export		Debug					Debugging				Dump			| D
-		E |	Settings							Error Handling							| E
-		F |	Profile																		| F
-		G |	Gremlins																	| G
-		H |	HotSync								HostFS									| H
-		I |	Install																		| I
-		J |																				| J
-		K |																				| K
-		L |										Logging									| L
-		M |													Minimize					| M
-		N |	New			Normal								New							| N
-		O |	Open				Other	Other											| O
-		P |	Properties										Stop		Stop	Paste	| P
-		Q |	Quit																		| Q
-		R |	Reset											Resume				Clear	| R
-		S |	Save								Skins		Step		Start			| S
-		T |	Transfer ROM						Tracing							Cut		| T
-		U |																		Undo	| U
-		V |	Save Screen																	| V
-		W |																				| W
-		X |	Exit																		| X
-		Y |													Replay						| Y
-		Z |																				| Z
-		--+-----------------------------------------------------------------------------+--
+	--+-----------------------------------------------------------------------------+--
+	  |	Top level	Reset	Open	Import	Settings	Gremlins	Profile	Edit	|
+	--+-----------------------------------------------------------------------------+--
+	A |	Save As																		| A
+	B |	Save Bound							Breakpoints								| B
+	C |	Close		Cold					Cards							Copy	| C
+	D |	Export		Debug					Debugging				Dump			| D
+	E |	Settings																	| E
+	F |	Profile																		| F
+	G |	Gremlins																	| G
+	H |	HotSync																		| H
+	I |	Install																		| I
+	J |																				| J
+	K |																				| K
+	L |										Logging									| L
+	M |																				| M
+	N |	New			Normal								New							| N
+	O |	Open				Other	Other											| O
+	P |	Properties										Stop		Stop	Paste	| P
+	Q |	Quit																		| Q
+	R |	Reset											Resume				Clear	| R
+	S |	Save								Skins		Step		Start			| S
+	T |	Transfer ROM						Tracing							Cut		| T
+	U |																		Undo	| U
+	V |	Save Screen																	| V
+	W |																				| W
+	X |	Exit																		| X
+	Y |																				| Y
+	Z |																				| Z
+	--+-----------------------------------------------------------------------------+--
 */
 
 EmPrvMenuItem	kPrvMenuItems[] =
 {
+#if 1
 	{ kCommandSessionNew,		kStr_MenuSessionNew },
 	{ kCommandSessionOpenOther,	kStr_MenuSessionOpenOther },
 	{ kCommandSessionOpen0,		kStr_MenuBlank },
@@ -208,8 +179,6 @@ EmPrvMenuItem	kPrvMenuItems[] =
 	{ kCommandSessionSaveAs,	kStr_MenuSessionSaveAs },
 	{ kCommandSessionBound,		kStr_MenuSessionBound },
 	{ kCommandScreenSave,		kStr_MenuScreenSave },
-	
-	{ kCommandSessionInfo,		kStr_MenuSessionInfo },
 
 	{ kCommandImportOther,		kStr_MenuImportOther },
 	{ kCommandImport0,			kStr_MenuBlank },
@@ -237,21 +206,15 @@ EmPrvMenuItem	kPrvMenuItems[] =
 	{ kCommandPreferences,		kStr_MenuPreferences },
 	{ kCommandLogging,			kStr_MenuLogging },
 	{ kCommandDebugging,		kStr_MenuDebugging },
-	{ kCommandErrorHandling,	kStr_MenuErrorHandling },
-#if HAS_TRACER
 	{ kCommandTracing,			kStr_MenuTracing },
-#endif
 	{ kCommandSkins,			kStr_MenuSkins },
-	{ kCommandHostFS,			kStr_MenuHostFS },
+	{ kCommandCards,			kStr_MenuCards },
 	{ kCommandBreakpoints,		kStr_MenuBreakpoints },
 
 	{ kCommandGremlinsNew,		kStr_MenuGremlinsNew },
-	{ kCommandGremlinsSuspend,	kStr_MenuGremlinsSuspend },
 	{ kCommandGremlinsStep,		kStr_MenuGremlinsStep },
 	{ kCommandGremlinsResume,	kStr_MenuGremlinsResume },
 	{ kCommandGremlinsStop,		kStr_MenuGremlinsStop },
-	{ kCommandEventReplay,		kStr_MenuEventReplay },
-	{ kCommandEventMinimize,	kStr_MenuEventMinimize },
 
 #if HAS_PROFILING
 	{ kCommandProfileStart,		kStr_MenuProfileStart },
@@ -274,6 +237,92 @@ EmPrvMenuItem	kPrvMenuItems[] =
 	{ kCommandSettings,			kStr_MenuSettings },
 
 	{ __________,				kStr_MenuBlank }
+#else
+	{ kCommandSessionNew,		"&New...\tN" },
+	{ kCommandSessionOpenOther,	"&Other...\tO" },
+	{ kCommandSessionOpen0,		"" },
+	{ kCommandSessionOpen1,		"" },
+	{ kCommandSessionOpen2,		"" },
+	{ kCommandSessionOpen3,		"" },
+	{ kCommandSessionOpen4,		"" },
+	{ kCommandSessionOpen5,		"" },
+	{ kCommandSessionOpen6,		"" },
+	{ kCommandSessionOpen7,		"" },
+	{ kCommandSessionOpen8,		"" },
+	{ kCommandSessionOpen9,		"" },
+	{ kCommandSessionClose,		"&Close\tW" },
+
+	{ kCommandSessionSave,		"&Save\tS" },
+	{ kCommandSessionSaveAs,	"Save &As..." },
+	{ kCommandSessionBound,		"Save &Bound Emulator..." },
+	{ kCommandScreenSave,		"Sa&ve Screen...\tM" },	// !!!Now reserved by Mac OS X for Minimize
+
+	{ kCommandImportOther,		"&Other...\tI" },
+	{ kCommandImport0,			"" },
+	{ kCommandImport1,			"" },
+	{ kCommandImport2,			"" },
+	{ kCommandImport3,			"" },
+	{ kCommandImport4,			"" },
+	{ kCommandImport5,			"" },
+	{ kCommandImport6,			"" },
+	{ kCommandImport7,			"" },
+	{ kCommandImport8,			"" },
+	{ kCommandImport9,			"" },
+	{ kCommandExport,			"Export &Database..." },
+
+	{ kCommandHotSync,			"&HotSync\tH" },	// !!!Now reserved by Mac OS X for Hide
+	{ kCommandReset,			"&Reset...\tR" },
+	{ kCommandDownloadROM,		"&Transfer ROM...\tD" },
+
+	{ kCommandUndo,				"&Undo\tZ" },
+	{ kCommandCut,				"Cu&t\tX" },
+	{ kCommandCopy,				"&Copy\tC" },
+	{ kCommandPaste,			"&Paste\tV" },
+	{ kCommandClear,			"Clea&r" },
+
+#if PLATFORM_WINDOWS
+	{ kCommandPreferences,		"&Properties...\t/" },
+#else
+	{ kCommandPreferences,		"&Preferences...\t/" },
+#endif
+	{ kCommandLogging,			"&Logging...\tL" },
+	{ kCommandDebugging,		"&Debugging...\t\\" },
+	{ kCommandTracing,			"&Tracing...\tT" },
+	{ kCommandSkins,			"&Skins...\tK" },
+	{ kCommandCards,			"&Cards..." },
+	{ kCommandBreakpoints,		"&Breakpoints...\tB" },
+
+	{ kCommandGremlinsNew,		"&New...\tG" },
+	{ kCommandGremlinsStep,		"&Step" },
+	{ kCommandGremlinsResume,	"&Resume" },
+	{ kCommandGremlinsStop,		"Sto&p" },
+
+#if HAS_PROFILING
+	{ kCommandProfileStart,		"&Start\t[" },
+	{ kCommandProfileStop,		"Sto&p\t]" },
+	{ kCommandProfileDump,		"&Dump" },
+#endif
+
+	{ kCommandAbout,			"About Palm OS Emulator" },
+#if PLATFORM_WINDOWS
+	{ kCommandQuit,				"E&xit\tQ" },
+#else
+	{ kCommandQuit,				"&Quit\tQ" },
+#endif
+
+	{ kCommandFile,				"File" },
+	{ kCommandEdit,				"Edit" },
+	{ kCommandGremlins,			"&Gremlins" },
+#if HAS_PROFILING
+	{ kCommandProfile,			"Pro&file" },
+#endif
+
+	{ kCommandOpen,				"&Open" },
+	{ kCommandImport,			"&Install Application/Database" },
+	{ kCommandSettings,			"S&ettings" },
+
+	{ __________,				"" }
+#endif
 };
 
 
@@ -288,7 +337,8 @@ void MenuInitialize (Bool alternateLayout)
 {
 	::PrvInitializeMenus (alternateLayout);
 
-	gChangeCount	= 1;
+	gSessionMRUDirty	= true;
+	gDatabaseMRUDirty	= true;
 
 	gPrefs->AddNotification (&::PrvPrefsChanged, kPrefKeyPSF_MRU);
 	gPrefs->AddNotification (&::PrvPrefsChanged, kPrefKeyPRC_MRU);
@@ -301,9 +351,9 @@ void MenuInitialize (Bool alternateLayout)
 // Find the top-level menu with the given menu ID and return a pointer to it.
 // If the menu ID is unknown, this function returns NULL.
 
-EmMenu* MenuFindMenu (EmMenuID menuID)
+EmMenuItemList* MenuFindMenu (EmMenuID menuID)
 {
-	EmMenu*	menu = NULL;
+	EmMenuItemList*	menu = NULL;
 
 	menuID = ::PrvPreferredMenuID (menuID);
 
@@ -402,11 +452,12 @@ EmMenuItemList* MenuFindMenuContainingCommandID (EmMenuItemList& menu, EmCommand
 // ---------------------------------------------------------------------------
 // Update the MRU menu items according to the current preferences.
 
-void MenuUpdateMruMenus (EmMenu& menu)
+void MenuUpdateMruMenus (EmMenuItemList& menu)
 {
-	if (gChangeCount != menu.GetChangeCount ())
+//	if (gSessionMRUDirty || gDatabaseMRUDirty)
 	{
-		menu.SetChangeCount (gChangeCount);
+		gSessionMRUDirty	= false;
+		gDatabaseMRUDirty	= false;
 
 		EmFileRefList	session, database;
 		::PrvCollectFiles (session, database);
@@ -466,7 +517,6 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (subMenuFile, kCommandSessionSaveAs);
 	::PrvAddMenuItem (subMenuFile, kCommandSessionBound);
 	::PrvAddMenuItem (subMenuFile, kCommandScreenSave);
-	::PrvAddMenuItem (subMenuFile, kCommandSessionInfo);
 	::PrvAddMenuItem (subMenuFile, __________);
 	::PrvAddMenuItem (subMenuFile, kCommandImport);
 	::PrvAddMenuItem (subMenuFile, kCommandExport);
@@ -491,30 +541,17 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (subMenuEdit, kCommandClear);
 
 	::PrvAddMenuItem (subMenuEdit, __________);
-	// Strictly speaking, we should not include the Preferences
-	// menu item when using the Aqua interface.  Apple prefers
-	// that that menu item be in the "application" menu under
-	// the About menu item.  However, we have many Preferenc-like
-	// menu items.  It would be nice to have them all in one
-	// place.  However, I don't know how to put them all into
-	// the "application" menu, so I'll keep them all in the Edit
-	// menu.  But there will also be the standard Preferences
-	// menu item in the "application" menu, which will do the
-	// same thing as the Preferences menu item in the Edit menu.
 #if (UNIVERSAL_INTERFACES_VERSION >= 0x0340)
-//	if (!alternateLayout)
+	if (!alternateLayout)
 #endif
 	{
 		::PrvAddMenuItem (subMenuEdit, kCommandPreferences);
 	}
 	::PrvAddMenuItem (subMenuEdit, kCommandLogging);
 	::PrvAddMenuItem (subMenuEdit, kCommandDebugging);
-	::PrvAddMenuItem (subMenuEdit, kCommandErrorHandling);
-#if HAS_TRACER
 	::PrvAddMenuItem (subMenuEdit, kCommandTracing);
-#endif
 	::PrvAddMenuItem (subMenuEdit, kCommandSkins);
-	::PrvAddMenuItem (subMenuEdit, kCommandHostFS);
+	::PrvAddMenuItem (subMenuEdit, kCommandCards);
 	::PrvAddMenuItem (subMenuEdit, kCommandBreakpoints);
 
 	// Create the "Gremlins" sub-menu.
@@ -522,13 +559,10 @@ void PrvInitializeMenus (Bool alternateLayout)
 	EmMenuItemList	subMenuGremlins;
 	::PrvAddMenuItem (subMenuGremlins, kCommandGremlinsNew);
 	::PrvAddMenuItem (subMenuGremlins, __________);
-//	::PrvAddMenuItem (subMenuGremlins, kCommandGremlinsSuspend);
 	::PrvAddMenuItem (subMenuGremlins, kCommandGremlinsStep);
 	::PrvAddMenuItem (subMenuGremlins, kCommandGremlinsResume);
-	::PrvAddMenuItem (subMenuGremlins, kCommandGremlinsStop);
 	::PrvAddMenuItem (subMenuGremlins, __________);
-	::PrvAddMenuItem (subMenuGremlins, kCommandEventReplay);
-	::PrvAddMenuItem (subMenuGremlins, kCommandEventMinimize);
+	::PrvAddMenuItem (subMenuGremlins, kCommandGremlinsStop);
 
 	// Create the "Profile" sub-menu.
 
@@ -578,12 +612,9 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (subMenuSettings, kCommandPreferences);
 	::PrvAddMenuItem (subMenuSettings, kCommandLogging);
 	::PrvAddMenuItem (subMenuSettings, kCommandDebugging);
-	::PrvAddMenuItem (subMenuSettings, kCommandErrorHandling);
-#if HAS_TRACER
 	::PrvAddMenuItem (subMenuSettings, kCommandTracing);
-#endif
 	::PrvAddMenuItem (subMenuSettings, kCommandSkins);
-	::PrvAddMenuItem (subMenuSettings, kCommandHostFS);
+	::PrvAddMenuItem (subMenuSettings, kCommandCards);
 	::PrvAddMenuItem (subMenuSettings, kCommandBreakpoints);
 
 	// Create the Full menubar.
@@ -607,7 +638,6 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (gMenuPopupMenu, kCommandSessionSaveAs);
 	::PrvAddMenuItem (gMenuPopupMenu, kCommandSessionBound);
 	::PrvAddMenuItem (gMenuPopupMenu, kCommandScreenSave);
-	::PrvAddMenuItem (gMenuPopupMenu, kCommandSessionInfo);
 	::PrvAddMenuItem (gMenuPopupMenu, __________);
 	::PrvAddMenuItem (gMenuPopupMenu, kCommandImport);
 	::PrvAddMenuItem (gMenuPopupMenu, kCommandExport);
@@ -624,13 +654,6 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (gMenuPopupMenu, kCommandAbout);
 
 	// Create the Partially-Bound popup menu.
-	// We remove:
-	//		Close
-	//		Save Bound
-	//		Download ROM
-	//		Gremlins
-	//		Profile
-	//		All settings bu Preferences and Skins
 
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandQuit);
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, __________);
@@ -640,7 +663,6 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandSessionSave);
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandSessionSaveAs);
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandScreenSave);
-	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandSessionInfo);
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, __________);
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandImport);
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandExport);
@@ -653,13 +675,6 @@ void PrvInitializeMenus (Bool alternateLayout)
 	::PrvAddMenuItem (gMenuPartiallyBoundPopupMenu, kCommandAbout);
 
 	// Create the Fully-Bound popup menu.
-	// We remove Partially Bound items plus:
-	//		SessionNew
-	//		Open
-	//		SessionSave
-	//		SessionSaveAs
-	//		SessionInfo
-	//		Export
 
 	::PrvAddMenuItem (gMenuFullyBoundPopupMenu, kCommandQuit);
 	::PrvAddMenuItem (gMenuFullyBoundPopupMenu, __________);
@@ -885,20 +900,19 @@ Bool PrvGetItemStatus (const EmMenuItem& item)
 		case kCommandSessionBound:		return false;
 #endif
 		case kCommandScreenSave:		return gSession != NULL;
-		case kCommandSessionInfo:		return gSession != NULL;
 
-		case kCommandImportOther:		return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport0:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport1:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport2:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport3:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport4:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport5:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport6:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport7:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport8:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandImport9:			return gSession != NULL && EmPatchState::UIInitialized ();
-		case kCommandExport:			return gSession != NULL && EmPatchState::UIInitialized ();
+		case kCommandImportOther:		return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport0:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport1:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport2:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport3:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport4:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport5:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport6:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport7:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport8:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandImport9:			return gSession != NULL && Patches::UIInitialized ();
+		case kCommandExport:			return gSession != NULL && Patches::UIInitialized ();
 
 		case kCommandHotSync:			return gSession != NULL;
 		case kCommandReset:				return gSession != NULL;
@@ -913,21 +927,15 @@ Bool PrvGetItemStatus (const EmMenuItem& item)
 		case kCommandPreferences:		return true;
 		case kCommandLogging:			return true;
 		case kCommandDebugging:			return true;
-		case kCommandErrorHandling:		return true;
-#if HAS_TRACER
 		case kCommandTracing:			return true;
-#endif
 		case kCommandSkins:				return true;
-		case kCommandHostFS:			return true;
+		case kCommandCards:				return true;
 		case kCommandBreakpoints:		return true;
 
 		case kCommandGremlinsNew:		return gSession != NULL && Hordes::CanNew ();
-		case kCommandGremlinsSuspend:	return gSession != NULL && Hordes::CanSuspend ();
 		case kCommandGremlinsStep:		return gSession != NULL && Hordes::CanStep ();
 		case kCommandGremlinsResume:	return gSession != NULL && Hordes::CanResume ();
 		case kCommandGremlinsStop:		return gSession != NULL && Hordes::CanStop ();
-		case kCommandEventReplay:		return true;
-		case kCommandEventMinimize:		return true;
 
 #if HAS_PROFILING
 		case kCommandProfileStart:		return gSession != NULL && ::ProfileCanStart ();
@@ -969,11 +977,11 @@ void PrvPrefsChanged (PrefKeyType key, void*)
 {
 	if (strcmp (key, kPrefKeyPSF_MRU) == 0)
 	{
-		++gChangeCount;
+		gSessionMRUDirty = true;
 	}
 	else if (strcmp (key, kPrefKeyPRC_MRU) == 0)
 	{
-		++gChangeCount;
+		gDatabaseMRUDirty = true;
 	}
 }
 
@@ -991,20 +999,20 @@ EmMenuID PrvPreferredMenuID (EmMenuID id)
 	switch (id)
 	{
 		case kMenuMenubarPreferred:
-			if (gApplication->IsBoundPartially ())	return kMenuMenubarPartiallyBound;
-			if (gApplication->IsBoundFully ())		return kMenuMenubarPartiallyBound;
-													return kMenuMenubarFull;
-		case kMenuMenubarFull:						return kMenuMenubarFull;
-		case kMenuMenubarPartiallyBound:			return kMenuMenubarPartiallyBound;
-		case kMenuMenubarFullyBound:				return kMenuMenubarFullyBound;
+			if (::IsBoundPartially ())		return kMenuMenubarPartiallyBound;
+			if (::IsBoundFully ())			return kMenuMenubarPartiallyBound;
+											return kMenuMenubarFull;
+		case kMenuMenubarFull:				return kMenuMenubarFull;
+		case kMenuMenubarPartiallyBound:	return kMenuMenubarPartiallyBound;
+		case kMenuMenubarFullyBound:		return kMenuMenubarFullyBound;
 
 		case kMenuPopupMenuPreferred:
-			if (gApplication->IsBoundPartially ())	return kMenuPopupMenuPartiallyBound;
-			if (gApplication->IsBoundFully ())		return kMenuPopupMenuFullyBound;
-													return kMenuPopupMenuFull;
-		case kMenuPopupMenuFull:					return kMenuPopupMenuFull;
-		case kMenuPopupMenuPartiallyBound:			return kMenuPopupMenuPartiallyBound;
-		case kMenuPopupMenuFullyBound:				return kMenuPopupMenuFullyBound;
+			if (::IsBoundPartially ())		return kMenuPopupMenuPartiallyBound;
+			if (::IsBoundFully ())			return kMenuPopupMenuFullyBound;
+											return kMenuPopupMenuFull;
+		case kMenuPopupMenuFull:			return kMenuPopupMenuFull;
+		case kMenuPopupMenuPartiallyBound:	return kMenuPopupMenuPartiallyBound;
+		case kMenuPopupMenuFullyBound:		return kMenuPopupMenuFullyBound;
 
 		case kMenuNone:
 			break;

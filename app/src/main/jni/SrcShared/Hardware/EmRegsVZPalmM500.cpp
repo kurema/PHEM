@@ -33,8 +33,6 @@
 #define	hwrVZPortKKbdRow1		0x40	// (H) Keyboard Row 1
 #define	hwrVZPortKKbdRow2		0x80	// (H) Keyboard Row 2
 
-#define	hwrVZPortMIR_SD			0x20	// (L) Infrared Shut-down
-
 
 const int		kNumButtonRows = 3;
 const int		kNumButtonCols = 4;
@@ -89,41 +87,11 @@ Bool EmRegsVZPalmM500::GetLCDBacklightOn (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegsVZPalmM500::GetLineDriverState
+//		¥ EmRegsVZPalmM500::GetSerialPortOn
 // ---------------------------------------------------------------------------
-// Return whether or not the line drivers for the given object are open or
-// closed.
 
-Bool EmRegsVZPalmM500::GetLineDriverState (EmUARTDeviceType type)
+Bool EmRegsVZPalmM500::GetSerialPortOn (int uartNum)
 {
-	if (type == kUARTSerial)
-		return (READ_REGISTER (portGData) & hwrVZPortG232_SHDN_N) != 0;
-
-	if (type == kUARTIR)
-		return (READ_REGISTER (portMData) & hwrVZPortMIR_SD) == 0;
-
-	if (type == kUARTMystery)
-		return true;
-
-	return false;
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ EmRegsVZPalmM500::GetUARTDevice
-// ---------------------------------------------------------------------------
-// Return what sort of device is hooked up to the given UART.
-
-EmUARTDeviceType EmRegsVZPalmM500::GetUARTDevice (int uartNum)
-{
-	Bool	serEnabled	= this->GetLineDriverState (kUARTSerial);
-	Bool	irEnabled	= this->GetLineDriverState (kUARTIR);
-
-	// It's probably an error to have them both enabled at the same
-	// time.  !!! TBD: make this an error message.
-
-	EmAssert (!(serEnabled && irEnabled));
-
 	/*
 		From Michael Cortopassi:
 
@@ -131,18 +99,10 @@ EmUARTDeviceType EmRegsVZPalmM500::GetUARTDevice (int uartNum)
 			UART 2 for hotsync
 	*/
 
-	if (uartNum == 0)
-	{
-		if (irEnabled)
-			return kUARTIR;
-	}
-	else if (uartNum == 1)
-	{
-		if (serEnabled)
-			return kUARTSerial;
-	}
+	if (uartNum == 1)
+		return (READ_REGISTER (portGData) & hwrVZPortG232_SHDN_N) != 0;
 
-	return kUARTNone;
+	return false;
 }
 
 
@@ -166,7 +126,7 @@ uint16 EmRegsVZPalmM500::GetLEDState (void)
 	UInt8	portBData	= READ_REGISTER (portBData);
 
 	if (portBData & hwrVZPortBALARM_LED)
-		result |= kLEDGreen;
+		result |= kLEDRed;
 
 	return result;
 }

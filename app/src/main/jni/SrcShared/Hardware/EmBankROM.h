@@ -14,6 +14,8 @@
 #ifndef EmBankROM_h
 #define EmBankROM_h
 
+#include "UAE.h"				// m68k_getpc
+
 class EmStream;
 class SessionFile;
 
@@ -42,6 +44,8 @@ class EmBankROM
 		static void				AddOpcodeCycles		(void);
 
 		static emuptr			GetMemoryStart		(void) { return gROMMemoryStart; }
+		static int				IsPCInRAM			(void) { return m68k_getpc () < GetMemoryStart (); }
+		static int				IsPCInROM			(void) { return m68k_getpc () >= GetMemoryStart (); }
 
 	private:
 		static void				AddressError		(emuptr address, long size, Bool forRead);

@@ -117,11 +117,6 @@ typedef enum {
 
 typedef UInt16 OmOverlayKind;
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER kwk - figure out exact format for portable struct declaration.
-// We might also want to hide this information in a private header, and
-// just have OmLocaleType in here.
-#endif // PUBLIC_STUFF_STRIPPED
 
 typedef struct {
 	OmOverlayKind	overlayType;		// Replace, delete, etc.

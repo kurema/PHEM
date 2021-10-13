@@ -19,32 +19,29 @@
 #include "EmBankROM.h"			// EmBankROM::SetLong
 #include "EmBankSRAM.h"			// EmBankSRAM::SetLong
 
-
 #include "DebugMgr.h"			// Debug::HandleSystemCall
 #include "EmCPU68K.h"			// gCPU68K, gStackHigh, etc.
 #include "EmErrCodes.h"			// kError_UnimplementedTrap, kError_InvalidLibraryRefNum
 #include "EmMemory.h"			// CEnableFullAccess
 #include "EmPalmHeap.h"			// EmPalmHeap, GetHeapByPtr
-#include "EmPalmFunction.h"		// ProscribedFunction
 #include "EmPalmStructs.h"		// EmAliasCardHeaderType
-#include "EmPatchMgr.h"			// EmPatchMgr
-#include "EmPatchState.h"		// EmPatchState
 #include "EmSession.h"			// gSession->Reset
 #include "ErrorHandling.h"		// Errors::ReportInvalidPC
 #include "Logging.h"			// LogSystemCalls
-#include "MetaMemory.h"			// MetaMemory::InRAMOSComponent
 #include "Miscellaneous.h"		// GetSystemCallContext
-#include "Profiling.h"			// gProfilingEnabled
-#include "ROMStubs.h"			// IntlSetStrictChecks
-#include "UAE.h"				// CHECK_STACK_POINTER_DECREMENT
 
-#include "EmEventPlayback.h"	// EmEventPlayback::Initialize ();
+#include "Hordes.h"				// Hordes::Initialize ();
+#include "TrapPatches.h"		// Patches::Initialize ();
+#include "Platform_NetLib.h"	// Platform_NetLib::Initialize();
+#include "EmPalmHeap.h"			// EmPalmHeap::Initialize ();
 #include "EmLowMem.h"			// EmLowMem::Initialize ();
 #include "EmPalmFunction.h"		// EmPalmFunctionInit ();
-#include "EmPalmHeap.h"			// EmPalmHeap::Initialize ();
-#include "EmPatchMgr.h"			// EmPatchMgr::Initialize ();
-#include "Hordes.h"				// Hordes::Initialize ();
-#include "Platform_NetLib.h"	// Platform_NetLib::Initialize();
+
+#ifdef SONY_ROM
+#include "SonyWin\Platform_MsfsLib.h"
+#include "SonyWin\Platform_ExpMgrLib.h"
+void	LCD_InitStateJogButton();		// LCDSony.inl
+#endif
 
 #define LOG_FUNCTION_CALLS 0
 
@@ -70,7 +67,7 @@ static const uint32			CJ_TAGFENCE	= 0x55555555;
 //		Total			34 bytes
 
 static const int	kInterruptOverhead = 34;
-static emuptr		gStackLowWaterMark = 0;
+static uae_u32		gStackLowWaterMark = 0;
 
 
 /***********************************************************************
@@ -104,14 +101,8 @@ void EmPalmOS::Initialize (void)
 
 	gBigROMEntry = EmMemNULL;
 
-	// Add a notification for IntlStrictChecks
-
-	gPrefs->AddNotification (&EmPalmOS::PrefsChanged, kPrefKeyReportStrictIntlChecks);
-	gPrefs->AddNotification (&EmPalmOS::PrefsChanged, kPrefKeyReportOverlayErrors);
-
 	Hordes::Initialize ();
-	EmEventPlayback::Initialize ();
-	EmPatchMgr::Initialize ();
+	Patches::Initialize ();
 	Platform_NetLib::Initialize ();
 	EmPalmHeap::Initialize ();
 	EmLowMem::Initialize ();
@@ -138,6 +129,13 @@ void EmPalmOS::Initialize (void)
 
 void EmPalmOS::Reset (void)
 {
+#ifdef SONY_ROM
+	gStackHigh = 0;
+	gStackLowWaterMark = 0;
+	gStackLowWarn = 0;
+	gStackLow = 0;
+#endif
+
 	gStackList.clear ();
 
 	gBootStack		= StackRange ();
@@ -147,11 +145,15 @@ void EmPalmOS::Reset (void)
 	gKernelStackOverflowed = 0;
 
 	Hordes::Reset ();
-	EmEventPlayback::Reset ();
-	EmPatchMgr::Reset ();
+	Patches::Reset ();
 	Platform_NetLib::Reset ();
 	EmPalmHeap::Reset ();
 	EmLowMem::Reset ();
+
+#ifdef SONY_ROM
+	Platform_MsfsLib::Reset();
+	Platform_ExpMgrLib::Reset();
+#endif
 
 	// If the appropriate modifier key is down, install a temporary breakpoint
 	// at the start of the Big ROM.
@@ -191,11 +193,15 @@ void EmPalmOS::Reset (void)
 void EmPalmOS::Save (SessionFile& f)
 {
 	Hordes::Save (f);
-	EmEventPlayback::Save (f);
-	EmPatchMgr::Save (f);
+	Patches::Save (f);
 	Platform_NetLib::Save (f);
 	EmPalmHeap::Save (f);
 	EmLowMem::Save (f);
+
+#ifdef SONY_ROM
+	Platform_MsfsLib::Save(f);
+	Platform_ExpMgrLib::Save(f);
+#endif
 
 	const long	kCurrentVersion = 2;
 
@@ -236,11 +242,15 @@ void EmPalmOS::Save (SessionFile& f)
 void EmPalmOS::Load (SessionFile& f)
 {
 	Hordes::Load (f);
-	EmEventPlayback::Load (f);
-	EmPatchMgr::Load (f);
+	Patches::Load (f);
 	Platform_NetLib::Load (f);
 	EmPalmHeap::Load (f);
 	EmLowMem::Load (f);
+
+#ifdef SONY_ROM
+	Platform_MsfsLib::Load(f);
+	Platform_ExpMgrLib::Load(f);
+#endif
 
 	Chunk	chunk;
 	if (f.ReadStackInfo (chunk))
@@ -294,9 +304,12 @@ void EmPalmOS::Dispose (void)
 	EmLowMem::Dispose ();
 	EmPalmHeap::Dispose ();
 	Platform_NetLib::Dispose ();
-	EmPatchMgr::Dispose ();
-	EmEventPlayback::Dispose ();
+	Patches::Dispose ();
 	Hordes::Dispose ();
+
+#ifdef SONY_ROM
+	Platform_ExpMgrLib::Reset();
+#endif
 }
 
 
@@ -323,7 +336,7 @@ void EmPalmOS::CheckStackPointerAssignment (void)
 
 	// See if we already know about this stack.
 
-	emuptr				curA7 = gCPU->GetSP ();
+	emuptr				curA7 = m68k_areg (regs, 7);
 	StackList::iterator iter = gStackList.begin ();
 
 	while (iter != gStackList.end ())
@@ -430,7 +443,7 @@ void EmPalmOS::CheckStackPointerDecrement (void)
 	if (gKernelStackOverflowed)
 		return;
 
-	emuptr	curA7	= gCPU->GetSP ();
+	emuptr	curA7	= m68k_areg (regs, 7);
 	Bool	warning	= curA7 < gStackLowWarn;
 	Bool	fatal	= curA7 < gStackLow;
 
@@ -482,7 +495,7 @@ void EmPalmOS::CheckKernelStack (void)
 {
 	EmAssert (gKernelStackOverflowed);
 
-	emuptr	curA7 = gCPU->GetSP ();
+	emuptr	curA7 = m68k_areg (regs, 7);
 	
 	if (curA7 <= gStackHigh && curA7 >= gStackLow)
 	{
@@ -552,8 +565,8 @@ void EmPalmOS::RememberBootStack (void)
 	const int kBootStackSize = 0x0500;	// Per experimentation
 
 	gBootStack = StackRange (
-						gCPU->GetSP () - kBootStackSize,
-						gCPU->GetSP ());
+						m68k_areg (regs, 7) - kBootStackSize,
+						m68k_areg (regs, 7));
 
 	RememberStackRange (gBootStack);
 }
@@ -577,7 +590,7 @@ void EmPalmOS::RememberKernelStack (void)
 
 	CEnableFullAccess	munge;
 
-	emuptr	ksp = gCPU->GetSP ();
+	emuptr	ksp = m68k_areg (regs, 7);
 	while (EmMemGet32 (ksp) != CJ_TAGFENCE)
 		ksp -= 2;
 
@@ -592,7 +605,7 @@ void EmPalmOS::RememberKernelStack (void)
 	gInterruptStack = StackRange (isp + 4, ksp);
 	RememberStackRange (gInterruptStack);
 
-	gKernelStack = StackRange (ksp + 4, gCPU->GetSP ());
+	gKernelStack = StackRange (ksp + 4, m68k_areg (regs, 7));
 	RememberStackRange (gKernelStack);
 }
 
@@ -714,8 +727,10 @@ void EmPalmOS::ForgetStack (emuptr stackBottom)
 	{
 		// If the pointer is in the *middle* of a stack, that's not good.
 
+#ifndef SONY_ROM
 		if (stackBottom > iter->fBottom && stackBottom < iter->fTop)
 			EmAssert (false);
+#endif
 
 		// If the pointer is to the beginning of the stack, we've found
 		// the one we want to remove.
@@ -802,171 +817,6 @@ void EmPalmOS::ForgetStacksIn (emuptr start, uint32 range)
 StackRange EmPalmOS::GetBootStack (void)
 {
 	return gBootStack;
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmPalmOS::IsInStack
- *
- * DESCRIPTION: .
- *
- * PARAMETERS:	None.
- *
- * RETURNED:	Nothing.
- *
- ***********************************************************************/
-
-Bool EmPalmOS::IsInStack (emuptr addr)
-{
-	return addr >= gStackLow && addr < gStackHigh;
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmPalmOS::IsInStackBlock
- *
- * DESCRIPTION: .
- *
- * PARAMETERS:	None.
- *
- * RETURNED:	Nothing.
- *
- ***********************************************************************/
-
-Bool EmPalmOS::IsInStackBlock (emuptr addr)
-{
-	return addr >= gCPU->GetSP () && addr < gStackHigh;
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:    EmPalmOS::GenerateStackCrawl
- *
- * DESCRIPTION: Starting with the current PC and A6, generate a list
- *				of active functions.
- *
- * PARAMETERS:  frameList - reference to the collection to receive
- *					the results.
- *
- * RETURNED:    Nothing
- *
- ***********************************************************************/
-
-void EmPalmOS::GenerateStackCrawl (EmStackFrameList& frameList)
-{
-	// Make sure we have access to all of memory, in case A6 is bogus
-	// or used for some purpose other than frame links.
-
-	CEnableFullAccess	munge;
-
-	// Clear out the stack crawl list.
-
-	frameList.clear ();
-
-	// Push the initial stack frame onto the stack.  This consists
-	// of the current PC and A6 values.
-
-	EmStackFrame	frame;
-
-	frame.fAddressInFunction	= m68k_getpc ();
-	frame.fA6					= m68k_areg (regs, 6);
-
-	frameList.push_back (frame);
-
-	// If A6 is odd or not in the current stack, stop the stack crawl.
-
-	if (::IsOdd (frame.fA6) || !EmPalmOS::IsInStack (frame.fA6))
-		return;
-
-	while (1)
-	{
-		emuptr	oldA6 = frame.fA6;
-
-		// Get the previous A6 and function from the stack.
-
-		frame.fAddressInFunction	= EmMemGet32 (oldA6 + 4);
-		frame.fA6					= EmMemGet32 (oldA6);
-
-		// If A6 is odd or not in the current stack, stop the stack crawl.
-
-		if (::IsOdd (frame.fA6) || !EmPalmOS::IsInStack (frame.fA6))
-			return;
-
-		// If the new A6 is not greater than the old A6, stop
-		// the stack crawl.
-
-		if (frame.fA6 <= oldA6)
-			return;
-
-		// If the return address is not valid, let's take a chance
-		// that what's on the stack is <A6> <SR> <return address>.
-		// We'd see this sequence if an exception has occurred and
-		// and exception frame is on the stack.
-
-		if (!EmMemCheckAddress (frame.fAddressInFunction, 2))
-		{
-			frame.fAddressInFunction	= EmMemGet32 (oldA6 + 6);
-
-			// If the return address still doesn't look valid,
-			// stop the stack crawl.
-
-			if (!EmMemCheckAddress (frame.fAddressInFunction, 2))
-			{
-				return;
-			}
-		}
-
-		// Everything looks OK, push this information onto our stack.
-
-		frameList.push_back (frame);
-	}
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ EmPalmOS::PrefsChanged
-// ---------------------------------------------------------------------------
-// Respond to a preference change.
-
-static void PrvRespondToPrefsChange (PrefKeyType prefKey)
-{
-	if (EmPatchState::UIInitialized ())
-	{
-		if (::PrefKeysEqual (prefKey, kPrefKeyReportStrictIntlChecks) && EmPatchMgr::IntlMgrAvailable ())
-		{
-			Preference<Bool> pref (kPrefKeyReportStrictIntlChecks, false);
-			::IntlSetStrictChecks (*pref);
-		}
-
-		if (::PrefKeysEqual (prefKey, kPrefKeyReportOverlayErrors))
-		{
-			Preference<Bool> pref (kPrefKeyReportOverlayErrors, false);
-			(void) ::FtrSet (omFtrCreator, omFtrShowErrorsFlag, *pref);
-		}
-	}
-}
-
-
-void EmPalmOS::PrefsChanged (PrefKeyType prefKey, void*)
-{
-	if (gSession)
-	{
-#if HAS_OMNI_THREAD
-		if (gSession->InCPUThread ())
-		{
-			::PrvRespondToPrefsChange (prefKey);
-		}
-		else
-#endif
-		{
-			EmSessionStopper	stopper (gSession, kStopOnSysCall);
-
-			::PrvRespondToPrefsChange (prefKey);
-		}
-	}
 }
 
 
@@ -1060,21 +910,13 @@ Bool EmPalmOS::HandleJSR (emuptr oldpc, emuptr dest)
 #endif
 
 #if LOG_FUNCTION_CALLS
-//	char	fromName[80];
+	char	fromName[80];
 	char	toName[80];
 
-//	::FindFunctionName (oldpc, fromName, NULL, NULL, 80);
+	::FindFunctionName (oldpc, fromName, NULL, NULL, 80);
 	::FindFunctionName (dest, toName, NULL, NULL, 80);
 
-	EmStackFrameList	stackCrawl;
-	EmPalmOS::GenerateStackCrawl (stackCrawl);
-
-	string	dots ("|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-");
-	dots.resize (stackCrawl.size ());
-
-//	LogAppendMsg (">>> %s --> %s", fromName, toName);
-//	LogAppendMsg ("--- System Call 0xA08D: %s", fromName, toName);
-	LogAppendMsg ("--- Function Call:      %s%s", dots.c_str (), toName);
+	LogAppendMsg (">>> %s --> %s", fromName, toName);
 #endif
 
 	return false;	// We didn't completely handle it; do default handling.
@@ -1200,7 +1042,7 @@ void EmPalmOS::HandleLINK (int /*linkSize*/)
 	Preference<bool>	pref (kPrefKeyFillStack);
 	if (*pref && linkSize < 0)
 	{
-		uae_memset (gCPU->GetSP (), 0xD5, -linkSize);
+		uae_memset (m68k_areg (regs, 7), 0xD5, -linkSize);
 	}
 #endif
 }
@@ -1227,7 +1069,7 @@ Bool EmPalmOS::HandleRTS (emuptr dest)
 	{
 		StDisableMemoryCycleCounting	stopper;
 
-		ProfileFnExit (dest, gCPU->GetPC () + 2);
+		ProfileFnExit (dest, m68k_getpc () + 2);
 	}
 #endif
 
@@ -1235,7 +1077,7 @@ Bool EmPalmOS::HandleRTS (emuptr dest)
 	char	fromName[80];
 	char	toName[80];
 
-	::FindFunctionName (gCPU->GetPC(), fromName, NULL, NULL, 80);
+	::FindFunctionName (m68k_getpc(), fromName, NULL, NULL, 80);
 	::FindFunctionName (dest, toName, NULL, NULL, 80);
 
 	LogAppendMsg ("<<< %s --> %s", fromName, toName);
@@ -1243,7 +1085,7 @@ Bool EmPalmOS::HandleRTS (emuptr dest)
 
 #if 0
 	char	fromName[80];
-	::FindFunctionName (gCPU->GetPC(), fromName, NULL, NULL, 80);
+	::FindFunctionName (m68k_getpc(), fromName, NULL, NULL, 80);
 
 	if (strcmp (fromName, "HwrADC") == 0)
 	{
@@ -1285,8 +1127,8 @@ Bool EmPalmOS::HandleRTS (emuptr dest)
 			"unknown"
 		};
 
-		UInt16	cmd			= EmMemGet16 (gCPU->GetSP () + 4);
-		emuptr	ptr			= EmMemGet32 (gCPU->GetSP () + 6);
+		UInt16	cmd			= EmMemGet16 (m68k_areg (regs, 7) + 4);
+		emuptr	ptr			= EmMemGet32 (m68k_areg (regs, 7) + 6);
 		UInt16	reserved1	= EmMemGet16 (ptr + 0);
 		UInt16	abs			= EmMemGet16 (ptr + 2);
 		UInt16	aux			= EmMemGet16 (ptr + 4);
@@ -1332,7 +1174,7 @@ Bool EmPalmOS::HandleRTE (emuptr dest)
 	char	fromName[80];
 	char	toName[80];
 
-	::FindFunctionName (gCPU->GetPC(), fromName, NULL, NULL, 80);
+	::FindFunctionName (m68k_getpc(), fromName, NULL, NULL, 80);
 	::FindFunctionName (dest, toName, NULL, NULL, 80);
 
 	LogAppendMsg ("<<< %s --> %s", fromName, toName);
@@ -1362,7 +1204,7 @@ void EmPalmOS::HandleNewPC (emuptr dest)
 	if ((dest & 1) != 0)
 		Errors::ReportErrInvalidPC (dest, kOddAddress);
 
-//	if (!EmPatchState::UIInitialized ())
+//	if (!Patches::UIInitialized ())
 //		return;
 
 	// Ensure that the PC is in ROM or RAM.
@@ -1454,11 +1296,6 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 	EmAssert (gSession);
 	EmAssert (gCPU68K);
 
-#if HAS_PROFILING
-	int	oldProfilingCounted = gProfilingCounted;
-	gProfilingCounted = false;
-#endif
-
 	// If the system call is being made by a TRAP $F, the PC has already
 	// been bumped past the opcode.  If being made with a JSR via the
 	// SYS_TRAP_FAST macro, the PC has not been adjusted.  Determine a
@@ -1481,61 +1318,9 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 		if (memSemaphoreID.xsmuse == 0)
 		{
-			// Check the current task.  We don't want to break on a system
-			// call if we're in the background.  If we're breaking on a
-			// system call, it's likely because some other part of Poser
-			// wants to make OS calls.  Occassionally, those OS calls result
-			// in trying to switch to the UI task (see, for example,
-			// PrvEditCardOptionsOK).  If we're already in the UI task, then
-			// that's OK, but if we're in a background task, an attempted
-			// switch to the UI task will fail, due to Poser turning off
-			// interrupts when it makes OS calls.
-
-			SysKernelInfoType	taskInfo;
-			taskInfo.selector	= sysKernelInfoSelCurTaskInfo;
-
-			Err	err = ::SysKernelInfo (&taskInfo);
-			if (err == errNone)
-			{
-				if (taskInfo.param.task.tag == 'psys')
-				{
-					gCPU->SetPC (gCPU->GetPC () - pcAdjust);
-					gSession->ScheduleSuspendSysCall ();
-
-#if HAS_PROFILING
-					gProfilingCounted = oldProfilingCounted;
-#endif
-
-					// Return true to say that everything has been handled.
-
-					return true;
-				}
-
-				// If we took a stab at this and didn't find that we were
-				// in the UI task, then call EvtWakeup.  If our context is
-				// one where an application has called EvtGetEvent with a
-				// "sleep forever" timeout, then the current task will be
-				// 'AMX ', and will stay that way.  Calling EvtWakeup will
-				// force an eventual switch to the UI task.
-				//
-				// Note that we wake-up the UI thread only if we're in the
-				// root AMX thread.  This prevents us from trying to call
-				// it when the Palm context is one where a background task
-				// is the current task.  It's possible for that task to be
-				// sleeping or something (the example we ran into was with
-				// a background task calling SysDelay).  EvtWakeup will try
-				// to switch to the UI task, but will not return until the
-				// UI task switches back to the background task.  That will
-				// never happen because interrupts are turned off during
-				// all Poser calls into the OS (such as the call to
-				// EvtWakeup).  Thus, the only safe places to call
-				// EvtWakeup are in the UI or AMX tasks.
-
-				else if (taskInfo.param.task.tag == 0x414d5800)
-				{
-					::EvtWakeup ();
-				}
-			}
+			m68k_setpc (m68k_getpc () - pcAdjust);
+			gSession->ScheduleSuspendSysCall ();
+			return true;
 		}
 	}
 
@@ -1547,7 +1332,7 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 	SystemCallContext	context;
 	Bool				gotFunction = GetSystemCallContext (
-								gCPU->GetPC () - pcAdjust, context);
+								m68k_getpc () - pcAdjust, context);
 
 
 	// ======================================================================
@@ -1556,10 +1341,6 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 	if (!gotFunction)
 	{
-#if HAS_PROFILING
-		gProfilingCounted = oldProfilingCounted;
-#endif
-
 		if (context.fError == kError_UnimplementedTrap)
 		{
 			Errors::ReportErrUnimplementedTrap (context);
@@ -1587,13 +1368,7 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 		strcpy (name, ::GetTrapName (context, true));
 
-		EmStackFrameList	stackCrawl;
-		EmPalmOS::GenerateStackCrawl (stackCrawl);
-
-		string	dots ("|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-");
-		dots.resize (stackCrawl.size ());
-
-		LogAppendMsg ("--- System Call 0x%04X: %s%s.", (long) context.fTrapWord, dots.c_str (), name);
+		LogAppendMsg ("--- System Call 0x%04X: %s.", (long) context.fTrapWord, name);
 	}
 
 
@@ -1605,26 +1380,7 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 	if (!gSession->IsNested () && Debug::HandleSystemCall (context))
 	{
-		// Return true to say that everything has been handled.
-
-#if HAS_PROFILING
-		gProfilingCounted = oldProfilingCounted;
-#endif
-
-		return true;
-	}
-
-
-	// ======================================================================
-	// Check for functions unsupported on ARM.  ProscribedFunction
-	// returns true if function is not supported.
-	// ======================================================================
-
-	if ((Memory::IsPCInRAM () && !MetaMemory::InRAMOSComponent (context.fPC))
-		&& ::ProscribedFunction (context))
-	{
-		gSession->ScheduleDeferredError (
-			new EmDeferredErrProscribedFunction (context));
+		return kSkipROM;
 	}
 
 
@@ -1638,6 +1394,8 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 	if (gProfilingEnabled && context.fViaTrap)
 	{
+		StDisableMemoryCycleCounting	stopper;
+		
 		ProfileFnEnter (context.fTrapWord, context.fNextPC);
 	}
 #endif
@@ -1647,7 +1405,7 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 	// If this trap is patched, let the patch handler handle the patch.
 	// ======================================================================
 
-	CallROMType result = EmPatchMgr::HandleSystemCall (context);
+	CallROMType result = Patches::HandleSystemCall (context);
 
 
 	// ======================================================================
@@ -1660,19 +1418,16 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 #if HAS_PROFILING
 		if (gProfilingEnabled)
 		{
+			StDisableMemoryCycleCounting	stopper;
 			ProfileFnExit (context.fNextPC, context.fTrapWord);
 		}
 #endif
 
 		// Set the PC to point past the instructions that got us here.
 
-		gCPU->SetPC (context.fNextPC);
+		m68k_setpc (context.fNextPC);
 
 		// Return true to say that everything has been handled.
-
-#if HAS_PROFILING
-		gProfilingCounted = oldProfilingCounted;
-#endif
 
 		return true;
 	}
@@ -1688,16 +1443,8 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 
 	if (gProfilingEnabled)
 	{
-		// Return false to do default exception handler processing.
-
-		gProfilingCounted = oldProfilingCounted;
-
-		return false;
+		return false;	// Return false to do default exception handler processing.
 	}
-#endif
-
-#if HAS_PROFILING
-	gProfilingCounted = oldProfilingCounted;
 #endif
 
 	// ======================================================================
@@ -1708,9 +1455,9 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 	// Push the return address onto the stack. Subtract 4 from the stack,
 	// and then store the appropriate return address.
 
-	gCPU->SetSP (gCPU->GetSP () - 4);
+	m68k_areg (regs, 7) -= 4;
 	CHECK_STACK_POINTER_DECREMENT ();
-	EmMemPut32 (gCPU->GetSP (), context.fNextPC);
+	EmMemPut32 (m68k_areg (regs, 7), context.fNextPC);
 
 	// Change to the new PC.  If possible, use the fully dereferenced destination
 	// address.  This speeds things up for libraries and sub-dispatched managers
@@ -1723,11 +1470,9 @@ Bool EmPalmOS::HandleSystemCall (Bool fromTrap)
 	}
 
 	EmPalmOS::HandleNewPC (destPC);
-	gCPU->SetPC (destPC);
+	m68k_setpc (destPC);
 
-	// Return true to say that everything has been handled.
-
-	return true;
+	return true;	// Return true to say that everything has been handled.
 }
 
 

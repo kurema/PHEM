@@ -47,10 +47,8 @@
 
 #include "Platform.h"			// _stricmp
 
-#include "EmBankRegs.h"			// AddSubBank
-#include "EmROMReader.h"		// EmROMReader
-#include "EmStreamFile.h"		// EmStreamFile
-#include "Miscellaneous.h"		// StMemory
+#include "EmBankRegs.h"
+#include "EmROMReader.h"
 
 #include "PalmPack.h"
 #define NON_PORTABLE
@@ -87,8 +85,6 @@
 #include "EmRegsEZVisor.h"
 #include "EmRegsEZTemp.h"
 
-#include "EmRegsSZTemp.h"
-
 #include "EmRegsVZPalmM500.h"
 #include "EmRegsVZPalmM505.h"
 #include "EmRegsVZVisorPrism.h"
@@ -106,42 +102,23 @@
 
 #include "EmTRG.h"
 
-#include "EmRegsMediaQ11xx.h"
+#ifdef SONY_ROM
+#include "SonyShared\SonyDevice.h"
+#include "SonyShared\EmRegsEZPegS500C.h"
+#include "SonyShared\EmRegsEZPegS300.h"
+#include "SonyShared\EmRegsVZPegN700C.h"
+#include "SonyShared\EmRegsVZPegNasca.h"
+#include "SonyShared\EmRegsVZPegYellowStone.h"
+#include "SonyShared\EmRegsVZPegVenice.h"
+#include "SonyShared\EmRegsVZPegModena.h"
+#include "SonyShared\Bank_USBSony.h"
+#include "SonyShared\EmRegsLCDCtrl.h"
+#include "SonyShared\EmRegsExpCardCLIE.h"
+#include "SonyShared\EmRegsFMSound.h"
+#include "EmBankROM.h"
+#endif	// SONY_ROM
 
 
-enum	// DeviceType
-{
-	kDeviceUnspecified	= 0,
-	kDevicePilot,
-	kDevicePalmPilot,
-	kDevicePalmIII,
-	kDevicePalmIIIc,
-	kDevicePalmIIIe,
-	kDevicePalmIIIx,
-	kDevicePalmV,
-	kDevicePalmVx,
-	kDevicePalmVII,
-	kDevicePalmVIIEZ,
-	kDevicePalmVIIx,
-	kDevicePalmM100,
-	kDevicePalmM125,
-	kDevicePalmM130,
-	kDevicePalmM500,
-	kDevicePalmM505,
-	kDevicePalmM515,
-	kDevicePalmI705,
-	kDeviceARMRef,
-	kDeviceSymbol1500,
-	kDeviceSymbol1700,
-	kDeviceSymbol1740,
-	kDeviceTRGpro,
-	kDeviceHandEra330,
-	kDeviceVisor,
-	kDeviceVisorPrism,
-	kDeviceVisorPlatinum,
-	kDeviceVisorEdge,
-	kDeviceLast
-};
 
 struct DeviceInfo
 {
@@ -298,40 +275,16 @@ static const DeviceInfo kDeviceInfo[] =
 		{{ 'palm', 'clvn' }}
 	},
 	{
-		kDevicePalmM125, "Palm m125",
-		{ "PalmM125", "m120", "m125", "m110", "m115", "JV", "Stu" },
-		kSupports68VZ328 + kHasFlash, 2048, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
-		{{ 'palm', 'vstu' }}
-	},
-	{
-		kDevicePalmM130, "Palm m130",
-		{ "PalmM130", "m130", "Hobbes", "PalmM130" },
-		kSupports68VZ328, 8192, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
-		{{ 'palm', 'vhbs' }}
-	},
-	{
 		kDevicePalmM500, "Palm m500",
 		{ "PalmM500", "m500", "Tornado" },
-		kSupports68VZ328 + kHasFlash, 8192, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
+		kSupports68VZ328 + kHasFlash, 2048, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
 		{{ 'palm', 'vtrn' }}
 	},
 	{
 		kDevicePalmM505, "Palm m505",
 		{ "PalmM505", "m505", "EmeraldCity", "VZDevice" },
-		kSupports68VZ328 + kHasFlash, 8192, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
+		kSupports68VZ328 + kHasFlash, 2048, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
 		{{ 'palm', 'ecty' }}
-	},
-	{
-		kDevicePalmM515, "Palm m515",
-		{ "PalmM515", "m515", "PalmM525", "m525", "Lighthouse", "GatorReef" },
-		kSupports68VZ328 + kHasFlash, 16384, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
-		{{ 'palm', 'vlit' }}
-	},
-	{
-		kDevicePalmI705, "Palm i705",
-		{ "PalmI705", "i705", "Everest", "PalmI705" },
-		kSupports68VZ328 + kHasFlash, 8192, hwrMiscFlagIDNone, hwrMiscFlagExtSubIDNone,
-		{{ 'palm', 'skyw' }}
 	},
 	{
 		kDeviceARMRef, "ARM Ref",
@@ -356,20 +309,11 @@ static const DeviceInfo kDeviceInfo[] =
 		kSupports68328 + kHasFlash, 2048, hwrMiscFlagIDRocky, hwrMiscFlagExtSubIDNone,
 	},
 
-	// ===== TRG/HandEra devices =====
-
+	// ===== TRG devices =====
 	{
 		kDeviceTRGpro, "TRGpro",
 		{ "TRGpro" },
 		kSupports68EZ328 + kHasFlash, 8192, hwrOEMCompanyIDTRG, hwrTRGproID,
-		{{ 'trgp', 'trg1' }}
-	},
-
-	{
-		kDeviceHandEra330, "HandEra 330",
-		{ "HandEra330" },
-		kSupports68VZ328 + kHasFlash, 8192, hwrOEMCompanyIDTRG, hwrTRGproID + 1,
-		{{ 'trgp', 'trg2' }}
 	},
 
 	// ===== Handspring devices =====
@@ -393,6 +337,11 @@ static const DeviceInfo kDeviceInfo[] =
 		{ "VisorEdge" },
 		kSupports68VZ328, 8192, halModelIDVisorEdge, 0
 	}
+
+#ifdef SONY_ROM
+#include "SonyShared\EmDeviceSony.inl"
+#endif
+
 };
 
 
@@ -654,39 +603,7 @@ Bool EmDevice::EdgeHack (void) const
  *
  ***********************************************************************/
 
-Bool EmDevice::SupportsROM (const EmFileRef& romFileRef) const
-{
-	// Load the ROM image into memory.
-
-	EmStreamFile	romStream (romFileRef, kOpenExistingForRead);
-	StMemory    	romImage (romStream.GetLength ());
-
-	romStream.GetBytes (romImage.Get (), romStream.GetLength ());
-
-	// Create a ROM Reader on the ROM image.
-
-	EmROMReader reader (romImage.Get (), romStream.GetLength ());
-
-	// Grovel over the ROM.
-
-	if (reader.AcquireCardHeader ())
-	{
-		UInt16	version = reader.GetCardVersion ();
-
-		if (version < 5)
-		{
-			reader.AcquireROMHeap ();
-			reader.AcquireDatabases ();
-			reader.AcquireFeatures ();
-			reader.AcquireSplashDB ();
-		}
-	}
-
-	return this->SupportsROM (reader);
-}
-
-
-Bool EmDevice::SupportsROM (const EmROMReader& ROM) const
+Bool EmDevice::SupportsROM (const EmROMReader<LAS> & ROM) const
 {
 	/* If the ROM is recent enough, use the embedded hardware ID information
 	   to determine whether it will work with this device */
@@ -874,7 +791,6 @@ Bool EmDevice::SupportsROM (const EmROMReader& ROM) const
 			break;
 
 		case kDeviceTRGpro:
-		case kDeviceHandEra330:
 			if (ROM.GetCardManufacturer () == TRGPRO_MANUF)
 				return true;
 			break;
@@ -907,6 +823,35 @@ Bool EmDevice::SupportsROM (const EmROMReader& ROM) const
 				return true;
 			break;
 
+#ifdef SONY_ROM
+		case kDevicePEGS500C:
+			if (!(ROM.GetCardManufacturer().compare(0, 16, SONY_MANUF)) &&
+				isColor)
+				return true;
+			break;
+
+		case kDevicePEGS300:
+			if (!(ROM.GetCardManufacturer().compare(0, 16, SONY_MANUF)) &&
+				!isColor)
+				return true;
+			break;
+
+		case kDevicePEGN700C:
+			{
+			if (!ROM.GetCardManufacturer().compare(0, 16, Sony_MANUF) 
+			 || !ROM.GetCardManufacturer().compare(0, 4, Sony_CompanyName))
+				return true;
+			}
+			break;
+
+		case kDevicePEGS320:
+		case kDevicePEGS360:
+		case kDevicePEGN600C:
+		case kDevicePEGT400:
+		case kDevicePEGT600:
+			break;
+
+#endif // SONY_ROM
 		case kDeviceLast:
 			EmAssert (false);
 			break;
@@ -939,8 +884,7 @@ EmCPU* EmDevice::CreateCPU (EmSession* session) const
 
 	if (this->Supports68328 () ||
 		this->Supports68EZ328 () ||
-		this->Supports68VZ328 () ||
-		this->Supports68SZ328 ())
+		this->Supports68VZ328 ())
 	{
 		result = new EmCPU68K (session);
 	}
@@ -1025,17 +969,6 @@ void EmDevice::CreateRegs (void) const
 			EmBankRegs::AddSubBank (new EmRegsEZPalmM100);
 			break;
 
-		case kDevicePalmM125:
-			EmBankRegs::AddSubBank (new EmRegsVZPalmM125);
-			EmBankRegs::AddSubBank (new EmRegsUSBPhilipsPDIUSBD12 (0x1F000000));
-			break;
-
-		case kDevicePalmM130:
-			EmBankRegs::AddSubBank (new EmRegsVZPalmM130);
-			EmBankRegs::AddSubBank (new EmRegsMediaQ11xx (MMIO_BASE, T_BASE));
-			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (T_BASE, MMIO_OFFSET));
-			break;
-
 		case kDevicePalmM500:
 			EmBankRegs::AddSubBank (new EmRegsVZPalmM500);
 			EmBankRegs::AddSubBank (new EmRegsUSBPhilipsPDIUSBD12 (0x10400000));
@@ -1046,19 +979,6 @@ void EmDevice::CreateRegs (void) const
 			EmBankRegs::AddSubBank (new EmRegsSED1376PalmGeneric (sed1376RegsAddr, sed1376VideoMemStart));
 			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (sed1376VideoMemStart, sed1376VideoMemSize));
 			EmBankRegs::AddSubBank (new EmRegsUSBPhilipsPDIUSBD12 (0x10400000));
-			break;
-
-		case kDevicePalmM515:
-			EmBankRegs::AddSubBank (new EmRegsVZPalmM505);
-			EmBankRegs::AddSubBank (new EmRegsSED1376PalmGeneric (sed1376RegsAddr, sed1376VideoMemStart));
-			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (sed1376VideoMemStart, sed1376VideoMemSize));
-			EmBankRegs::AddSubBank (new EmRegsUSBPhilipsPDIUSBD12 (0x10400000));
-			break;
-
-		case kDevicePalmI705:
-			EmBankRegs::AddSubBank (new EmRegsVZPalmI705);
-			EmBankRegs::AddSubBank (new EmRegsPLDPalmI705 (0x11000000));
-			EmBankRegs::AddSubBank (new EmRegsUSBPhilipsPDIUSBD12 (0x1F000000));
 			break;
 
 		case kDeviceARMRef:
@@ -1079,11 +999,7 @@ void EmDevice::CreateRegs (void) const
 			break;
 
 		case kDeviceTRGpro:
-			OEMCreateTRGRegObjs (hwrTRGproID);
-			break;
-
- 		case kDeviceHandEra330:
-			OEMCreateTRGRegObjs (hwrTRGproID + 1);
+			OEMCreateTRGRegObjs(hwrTRGproID);
 			break;
 
 		case kDeviceVisor:
@@ -1107,6 +1023,63 @@ void EmDevice::CreateRegs (void) const
 			EmBankRegs::AddSubBank (new EmRegsVZVisorEdge);
 			EmBankRegs::AddSubBank (new EmRegsUSBVisor);
 			break;
+
+#ifdef SONY_ROM
+		case kDevicePEGS500C:
+			{
+			EmBankRegs::AddSubBank (new EmRegsEzPegS500C);
+			EmBankRegs::AddSubBank (new EmRegsSED1375 ((emuptr) sed1375RegsAddr, sed1375BaseAddress));
+			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (sed1375BaseAddress, sed1375VideoMemSize));
+			EmBankRegs::AddSubBank (new EmRegsExpCardCLIE());
+			EmBankRegs::AddSubBank (new EmRegsUsbCLIE (0x00100000));
+			}
+			break;
+
+		case kDevicePEGS300:
+			EmBankRegs::AddSubBank (new EmRegsEzPegS300);
+			EmBankRegs::AddSubBank (new EmRegsExpCardCLIE());
+			EmBankRegs::AddSubBank (new EmRegsUsbCLIE (0x00100000));
+			break;
+
+		case kDevicePEGN700C:
+			EmBankRegs::AddSubBank (new EmRegsVzPegN700C);
+			EmBankRegs::AddSubBank (new EmRegsMQLCDControl(MQ_LCDController_RegsAddr, MQ_LCDController_VideoMemStart));
+			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (MQ_LCDController_VideoMemStart, MQ_LCDController_VideoMemSize));
+			EmBankRegs::AddSubBank (new EmRegsUSBforPegN700C (0x10800000L));
+			break;
+
+		case kDevicePEGS320:
+		case kDevicePEGS360:
+			EmBankRegs::AddSubBank (new EmRegsVzPegNasca);
+			EmBankRegs::AddSubBank (new EmRegsExpCardCLIE);
+			EmBankRegs::AddSubBank (new EmRegsUsbCLIE (0x11000000L, 0));
+			break;
+
+		case kDevicePEGN600C:
+			EmBankRegs::AddSubBank (new EmRegsVzPegYellowStone);
+			EmBankRegs::AddSubBank (new EmRegsMQLCDControl(MQ_LCDController_RegsAddr, MQ_LCDController_VideoMemStart));
+			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (MQ_LCDController_VideoMemStart, MQ_LCDController_VideoMemSize));
+			EmBankRegs::AddSubBank (new EmRegsExpCardCLIE);
+			EmBankRegs::AddSubBank (new EmRegsUsbCLIE (0x10900000L, 0));
+			break;
+
+		case kDevicePEGT400:
+			EmBankRegs::AddSubBank (new EmRegsVzPegVenice);
+			EmBankRegs::AddSubBank (new EmRegsExpCardCLIE);
+			EmBankRegs::AddSubBank (new EmRegsUsbCLIE (0x10900000L, 0));
+			EmBankRegs::AddSubBank (new EmRegsFMSound (FMSound_BaseAddress));
+			break;
+
+		case kDevicePEGT600:
+			EmBankRegs::AddSubBank (new EmRegsVzPegModena);
+			EmBankRegs::AddSubBank (new EmRegsMQLCDControl(MQ_LCDController_RegsAddr, MQ_LCDController_VideoMemStart));
+			EmBankRegs::AddSubBank (new EmRegsFrameBuffer (MQ_LCDController_VideoMemStart, MQ_LCDController_VideoMemSize));
+			EmBankRegs::AddSubBank (new EmRegsExpCardCLIE(ExpCard_BaseAddress));
+			EmBankRegs::AddSubBank (new EmRegsUsbCLIE (0x10900000L, 0));
+			EmBankRegs::AddSubBank (new EmRegsFMSound (FMSound_BaseAddress));
+			break;
+
+#endif // SONY_ROM
 
 		default:
 			break;

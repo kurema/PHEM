@@ -117,19 +117,6 @@
 #endif
 
 // This default option is probably ok for now
-#ifndef PUBLIC_STUFF_STRIPPED
-#ifndef CPU_TYPE
-   #if defined(__INTEL__) || defined(__i386__)
-      #define  CPU_TYPE          CPU_x86
-   #elif defined(__POWERPC__) || defined(__powerpc__)
-      #define  CPU_TYPE          CPU_PPC
-   #elif defined(__arm__)
-      #define  CPU_TYPE          CPU_ARM
-   #else
-	   #define	CPU_TYPE				CPU_68K
-   #endif
-#endif
-#else  // PUBLIC_STUFF_STRIPPED
 #ifndef CPU_TYPE
    #if defined(__INTEL__) || defined(__i386__)
       #define  CPU_TYPE          CPU_x86
@@ -137,18 +124,7 @@
 	   #define	CPU_TYPE				CPU_68K
    #endif
 #endif
-#endif // PUBLIC_STUFF_STRIPPED
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// This default option is probably ok for now
-#ifndef CPU_ENDIAN
-   #if (CPU_TYPE == CPU_x86) || (CPU_TYPE == CPU_ARM)
-      #define  CPU_ENDIAN        CPU_ENDIAN_LITTLE
-   #else
-	   #define	CPU_ENDIAN			CPU_ENDIAN_BIG
-   #endif
-#endif
-#endif // PUBLIC_STUFF_STRIPPED
 
 #ifndef MODEL
 	#define	MODEL						#error "MODEL not defined; Try including ''PalmOptModel.h''!"
@@ -176,12 +152,6 @@
 	#define	INTERNAL_COMMANDS		#error "INTERNAL_COMMANDS must be defined before using!"
 #endif
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER - this option should be driven strictly by inclusion or exclusion of a PRC file.
-// jquinn - This was turned on in the old makefiles. It should be on by default.
-// SCL - We should remove all references to this build option and just assume it's "on".
-// Mandalay builds with it "on" in all cases, even in the OS; there's no longer an extension.
-#endif // PUBLIC_STUFF_STRIPPED
 #ifndef	INCLUDE_DES
 	#define	INCLUDE_DES				INCLUDE_DES_ON
 #endif
@@ -202,15 +172,6 @@
 	#define	LOCALE_SUFFIX			""
 #endif
 
-#ifndef PUBLIC_STUFF_STRIPPED
-#ifndef	LOCALE
-	#define	LOCALE					#error "LOCALE not defined; Try including ''PalmOptLocale.h''!"
-	// The following allows <PalmOptLocale.h> to redefine LOCALE
-	// without letting it change LOCALE if it was already defined,
-	// such as would be the case when using a project prefix file...
-	#define	LOCALE_OK_TO_REDEFINE
-#endif
-#endif // PUBLIC_STUFF_STRIPPED
 
 
 // Set these according to which Shell commands you want to

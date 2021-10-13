@@ -15,7 +15,6 @@
 #include "Skins.h"
 
 #include "ChunkFile.h"			// Chunk
-#include "EmApplication.h"		// gApplication
 #include "EmFileRef.h"			// EmFileRef
 #include "EmMapFile.h"			// EmMapFile
 #include "EmSession.h"			// gSession
@@ -65,7 +64,12 @@ typedef vector<Skinfo>	SkinList;
 
 static EmDevice			gCurrentDevice;
 static Skinfo			gCurrentSkin;
+
+#ifdef SONY_ROM
+ScaleType				gCurrentScale;
+#else
 static ScaleType		gCurrentScale;
+#endif
 
 static void				PrvBuildSkinList	(SkinList&);
 static void				PrvGetSkins			(const EmDevice&, SkinList& results);
@@ -102,13 +106,23 @@ static const char* kElementNames[] =
 
 	"Touchscreen",
 	"LCD",
-	"LED"
+
+#ifdef SONY_ROM
+	// Sony custom button
+	"JogPush",				// for Sony & JogDial
+	"JogRelease",			// for Sony & JogDial
+	"JogRepeat",			// for Sony & JogDial
+	"JogUp",				// for Sony & JogDial
+	"JogDown",				// for Sony & JogDial
+	"JogESC",				// for Sony & JogDial
+	"MS-In/Out",			// for Sony & MemoryStick
+	"AlermLED",				// for Sony & AlermLED
+#endif	
 };
 
 
 static const char	kGenericSkinName[] = "Generic";
 
-#if 0 //AndroidTODO: conditionalize on Android compile
 static ButtonBoundsX	kGenericButtons [] =
 {
 	{ kElement_PowerButton,		{ {   1, 274 }, {  16,  24 } } },
@@ -119,30 +133,11 @@ static ButtonBoundsX	kGenericButtons [] =
 	{ kElement_App3Button,		{ { 131, 270 }, {  32,  32 } } },
 	{ kElement_App4Button,		{ { 168, 270 }, {  32,  32 } } },
 	{ kElement_CradleButton,	{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_Antenna,		{ {   0,   0 }, {   0,   0 } } },
+	{ kElement_Antenna,			{ {   0,   0 }, {   0,   0 } } },
 	{ kElement_ContrastButton,	{ {   0,   0 }, {   0,   0 } } },
 	{ kElement_Touchscreen,		{ {  32,  32 }, { 160, 220 } } },
-	{ kElement_LCD,			{ {  32,  32 }, { 160, 160 } } },
-	{ kElement_LED,			{ {   1, 274 }, {  16,  24 } } }
+	{ kElement_LCD,				{ {  32,  32 }, { 160, 160 } } }
 };
-#else
-static ButtonBoundsX	kGenericButtons [] =
-{
-	{ kElement_PowerButton,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_UpButton,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_DownButton,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_App1Button,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_App2Button,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_App3Button,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_App4Button,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_CradleButton,	{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_Antenna,		{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_ContrastButton,	{ {   0,   0 }, {   0,   0 } } },
-	{ kElement_Touchscreen,		{ {   3,   3 }, { 160, 220 } } },
-	{ kElement_LCD,			{ {   3,   3 }, { 160, 160 } } },
-	{ kElement_LED,			{ {   0,   0 }, {   0,   0 } } }
-};
-#endif
 
 static RGBType	kGenericBackgroundColor	(0x7B, 0x8C, 0x5A);
 static RGBType	kGenericHighlightColor	(0x64, 0xF0, 0xDC);
@@ -340,9 +335,9 @@ EmFileRef SkinGetSkinFile (ScaleType scale)
 		return EmFileRef ();
 	}
 
-	EmAssert (!gApplication->SkinfoResourcePresent ());
-	EmAssert (!gApplication->Skin1xResourcePresent ());
-	EmAssert (!gApplication->Skin2xResourcePresent ());
+	EmAssert (!Platform::SkinfoResourcePresent ());
+	EmAssert (!Platform::Skin1xResourcePresent ());
+	EmAssert (!Platform::Skin2xResourcePresent ());
 
 	string			name;
 
@@ -406,7 +401,7 @@ EmStream* SkinGetSkinStream (ScaleType scale)
 	if (gCurrentSkin.fName == kGenericSkinName)
 		return result;
 
-	if (gApplication->IsBound ())
+	if (::IsBound ())
 	{
 		// If we're bound, open up a stream on the resource data.
 
@@ -414,9 +409,9 @@ EmStream* SkinGetSkinStream (ScaleType scale)
 		Chunk*	chunk = new Chunk;
 
 		if (scale == 1)
-			haveRes = gApplication->GetSkin1xResource (*chunk);
+			haveRes = Platform::GetSkin1xResource (*chunk);
 		else
-			haveRes = gApplication->GetSkin2xResource (*chunk);
+			haveRes = Platform::GetSkin2xResource (*chunk);
 
 		if (haveRes)
 			result = new EmStreamChunk (chunk);
@@ -674,8 +669,6 @@ Bool	SkinGetElementInfo	(int index, SkinElementType& type, EmRect& bounds)
 
 EmPoint	SkinScaleDown	(const EmPoint& pt)
 {
-	EmAssert (gCurrentScale > 0);
-
 	EmPoint	result = pt;
 
 	result /= EmPoint (gCurrentScale, gCurrentScale);
@@ -686,8 +679,6 @@ EmPoint	SkinScaleDown	(const EmPoint& pt)
 
 EmRect	SkinScaleDown	(const EmRect& r)
 {
-	EmAssert (gCurrentScale > 0);
-
 	EmRect	result = r;
 
 	result /= EmPoint (gCurrentScale, gCurrentScale);
@@ -711,8 +702,6 @@ EmRect	SkinScaleDown	(const EmRect& r)
 
 EmPoint	SkinScaleUp	(const EmPoint& pt)
 {
-	EmAssert (gCurrentScale > 0);
-
 	EmPoint	result = pt;
 
 	result *= EmPoint (gCurrentScale, gCurrentScale);
@@ -723,8 +712,6 @@ EmPoint	SkinScaleUp	(const EmPoint& pt)
 
 EmRect	SkinScaleUp	(const EmRect& r)
 {
-	EmAssert (gCurrentScale > 0);
-
 	EmRect	result = r;
 
 	result *= EmPoint (gCurrentScale, gCurrentScale);
@@ -1163,10 +1150,10 @@ void PrvBuildSkinList (SkinList& skins)
 	// If we're a "bound" Poser, the skin list consists of the
 	// skin we're bound to.
 
-	if (gApplication->IsBound ())
+	if (::IsBound ())
 	{
 		Chunk	chunk;
-		if (gApplication->GetSkinfoResource (chunk))
+		if (Platform::GetSkinfoResource (chunk))
 		{
 			EmStreamChunk	stream (chunk);
 			::PrvAddSkin (skins, stream);
@@ -1502,3 +1489,41 @@ SkinName PrvGetSkinName (const EmDevice& device)
 
 	return result;
 }
+
+#ifdef SONY_ROM
+Bool	SkinGetElementRect	(SkinElementType which, RECT *lprc)
+{
+	ButtonBoundsList::iterator	iter = gCurrentSkin.fButtons.begin ();
+	while (iter != gCurrentSkin.fButtons.end ())
+	{
+		if (iter->fButton == which)
+		{
+			EmRect	result = iter->fBounds;
+			result = ::SkinScaleUp (result);
+			lprc->left = result.fLeft;
+			lprc->top = result.fTop;
+			lprc->right = result.fRight;
+			lprc->bottom = result.fBottom;
+			return true;
+		}
+		++iter;
+	}
+	return false;
+}
+
+Bool	SkinGetElementEmRect	(SkinElementType which, EmRect *lprc)
+{
+	ButtonBoundsList::iterator	iter = gCurrentSkin.fButtons.begin ();
+	while (iter != gCurrentSkin.fButtons.end ())
+	{
+		if (iter->fButton == which)
+		{
+			*lprc = iter->fBounds;
+			*lprc = ::SkinScaleUp (*lprc);
+			return true;
+		}
+		++iter;
+	}
+	return false;
+}
+#endif

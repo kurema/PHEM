@@ -70,32 +70,13 @@ Bool EmRegsEZVisor::GetLCDBacklightOn (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegsEZVisor::GetLineDriverState
+//		¥ EmRegsEZVisor::GetSerialPortOn
 // ---------------------------------------------------------------------------
-// Return whether or not the line drivers for the given object are open or
-// closed.
 
-Bool EmRegsEZVisor::GetLineDriverState (EmUARTDeviceType type)
+Bool EmRegsEZVisor::GetSerialPortOn (int /*uartNum*/)
 {
-	if (type == kUARTSerial)
-	{
-		uint16	uControl = READ_REGISTER (uControl);
-		uint16	uMisc = READ_REGISTER (uMisc);
-
-		return (uControl & hwrEZ328UControlUARTEnable) != 0 &&
-				(uMisc & hwrEZ328UMiscIRDAEn) == 0;
-	}
-
-	if (type == kUARTIR)
-	{
-		uint16	uControl = READ_REGISTER (uControl);
-		uint16	uMisc = READ_REGISTER (uMisc);
-
-		return (uControl & hwrEZ328UControlUARTEnable) != 0 &&
-				(uMisc & hwrEZ328UMiscIRDAEn) != 0;
-	}
-
-	return false;
+	uint16	uControl = READ_REGISTER (uControl);
+	return (uControl & hwrEZ328UControlUARTEnable) != 0;
 }
 
 

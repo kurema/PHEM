@@ -52,17 +52,6 @@ enum EmADSChannelType
 	kChannelUnused
 
 
-#define kChannelSet3		\
-	kChannelUnused,			\
-	kChannelPenY,			\
-	kChannelBattery7843,	\
-	kChannelUnused,			\
-	kChannelUnused,			\
-	kChannelPenX,			\
-	kChannelDockTwister,	\
-	kChannelUnused
-
-
 class EmSPISlaveADS784x : public EmSPISlave
 {
 	public:

@@ -33,7 +33,6 @@ class EmThreadSafeQueue
 		Bool					WaitForDataAvailable	(long timeoutms);
 
 		void					Clear					(void);
-		int						GetMaxSize				(void);
 
 	private:
 		omni_mutex				fMutex;

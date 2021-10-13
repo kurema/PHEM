@@ -1,5 +1,5 @@
-#ifndef UAE_h
-#define UAE_h
+#ifndef _UAE_H_
+#define _UAE_H_
 
 #include "sysconfig.h"		// (should really be included by sysdeps.h ...)
 #include "sysdeps.h"		// uae_u8, uae_u16, uae_u32, etc.
@@ -18,4 +18,6 @@
 // so undef it.  Use EmAssert instead.
 #undef assert
 
-#endif /* UAE_h */
+typedef struct regstruct	regstruct;
+
+#endif /* _UAE_H_ */

@@ -34,10 +34,6 @@
 #include <Rect.h>
 #include <Window.h>
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER еее Don't use an enum for this, as convenient as it is, there's namespace
-// pollution, size issues, no way to manage componentization, blah blah blah.
-#endif // PUBLIC_STUFF_STRIPPED
 
 typedef enum {
 	sysEventNilEvent = 0,
@@ -156,47 +152,6 @@ typedef  struct {
    UInt32         id;                  // used to support EvtAddUniqueEvent
    } SysEventStoreType;
 
-#ifndef PUBLIC_STUFF_STRIPPED		// removed header that should be moved into private area
-
-//---------------------------------------------------------------------
-// Event Functions
-//---------------------------------------------------------------------
-
-#ifdef REMOVE_FOR_EMULATOR
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* DOLATER: jwm: This lot should be in a private header file, no? */
-
-void     SysEventInitialize (void)
-                     SYS_TRAP(sysTrapEvtInitialize);
-
-void     SysEventAddToQueue (const SysEventType *event)
-                     SYS_TRAP(sysTrapEvtAddEventToQueue);
-
-void     SysEventAddUniqueToQueue(const SysEventType *eventP, UInt32 id,
-            Boolean inPlace)
-                     SYS_TRAP(sysTrapEvtAddUniqueEventToQueue);
-
-void     SysEventCopy (const SysEventType *source, SysEventType *dest)
-                     SYS_TRAP(sysTrapEvtCopyEvent);
-
-void     SysEventGet (SysEventType *event, Int32 timeout)
-                     SYS_TRAP(sysTrapEvtGetEvent);
-
-Boolean  SysEventAvail (void)
-                     SYS_TRAP(sysTrapEvtEventAvail);
-
-
-#ifdef __cplusplus
-}
-#endif
-#endif
-
-
-// For Compatibility.. DOLATER... source modules should use EvtGetPen instead.
-#endif // PUBLIC_STUFF_STRIPPED
 #define     PenGetPoint(a,b,c)    EvtGetPen(a,b,c)
 
 

@@ -17,7 +17,6 @@
 #include "EmPixMap.h"
 #include "Platform.h"			// Platform::AllocateMemory
 
-#include <string.h>
 
 struct NODE
 {

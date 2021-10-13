@@ -14,7 +14,6 @@
 #include "EmCommon.h"
 #include "SLP.h"
 
-#include "Byteswapping.h"		// Canonical
 #include "DebugMgr.h"			// Debug::HandleNewPacket
 #include "EmErrCodes.h"			// kError_NoError
 #include "EmException.h"		// EmExceptionReset

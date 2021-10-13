@@ -20,7 +20,7 @@
 class EmRegsEZPalmVII : public EmRegsEZPalmV
 {
 	public:
-		virtual Bool			GetLineDriverState		(EmUARTDeviceType type);
+		Bool					GetSerialPortOn			(int uartNum);
 };
 
 #endif	/* EmRegsEZPalmVII_h */

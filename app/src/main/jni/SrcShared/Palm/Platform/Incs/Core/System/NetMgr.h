@@ -1487,20 +1487,6 @@ Err				NetLibConfigAliasGet( UInt16 refNum, UInt16 aliasIndex,
 						SYS_TRAP(netLibConfigAliasGet);
 
 						
-#ifndef PUBLIC_STUFF_STRIPPED						
-//--------------------------------------------------
-// Routines that must be linked in from the :Libraries:PalmOS:Src:NetSocket.c
-//   source module.
-//
-// These are general convenience routines for applications that use the
-//   NetLib. They are not part of the NetLib itself because they generally
-//   need to keep track of state within the application and require the use
-//   of application globals that are declared in NetSocket.c
-//--------------------------------------------------
-#ifdef __SYSEVENT_H__
-Boolean 			NetUWirelessAppHandleEvent(SysEventType *eventP, UInt32 flags, Err *errP);
-#endif
-#endif // PUBLIC_STUFF_STRIPPED
 
 
 #ifdef __cplusplus

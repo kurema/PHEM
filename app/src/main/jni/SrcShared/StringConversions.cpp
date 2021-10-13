@@ -16,13 +16,9 @@
 
 #include "EmDirRef.h"			// EmDirRef
 #include "EmFileRef.h"			// EmFileRef
-#include "EmTransport.h"		// EmTransportDescriptor
 #include "Platform.h"			// _stricmp
 
-#include <ctype.h>				// isprint
 #include <stdio.h>				// sscanf, sprintf
-/* Update for GCC 4 */
-#include <string.h>
 
 // Handy macro for performing some common unsigned string compares.
 
@@ -60,7 +56,6 @@ bool FromString (const string& s, bool& value)
 	return true;
 }
 
-
 bool FromString (const string& s, char& value)
 {
 	if (s.size () == 1 && isprint (s[0]))
@@ -72,7 +67,6 @@ bool FromString (const string& s, char& value)
 	return false;
 }
 
-
 bool FromString (const string& s, signed char& value)
 {
 	short	temp;
@@ -81,7 +75,6 @@ bool FromString (const string& s, signed char& value)
 		value = (signed char) temp;
 	return result == 1;
 }
-
 
 bool FromString (const string& s, unsigned char& value)
 {
@@ -92,13 +85,11 @@ bool FromString (const string& s, unsigned char& value)
 	return result == 1;
 }
 
-
 bool FromString (const string& s, signed short& value)
 {
 	int result = sscanf (s.c_str (), "%hd", &value);
 	return result == 1;
 }
-
 
 bool FromString (const string& s, unsigned short& value)
 {
@@ -106,13 +97,11 @@ bool FromString (const string& s, unsigned short& value)
 	return result == 1;
 }
 
-
 bool FromString (const string& s, signed int& value)
 {
 	int result = sscanf (s.c_str (), "%d", &value);
 	return result == 1;
 }
-
 
 bool FromString (const string& s, unsigned int& value)
 {
@@ -120,13 +109,11 @@ bool FromString (const string& s, unsigned int& value)
 	return result == 1;
 }
 
-
 bool FromString (const string& s, signed long& value)
 {
 	int result = sscanf (s.c_str (), "%ld", &value);
 	return result == 1;
 }
-
 
 bool FromString (const string& s, unsigned long& value)
 {
@@ -134,20 +121,17 @@ bool FromString (const string& s, unsigned long& value)
 	return result == 1;
 }
 
-
 bool FromString (const string& s, string& value)
 {
 	value = s;
 	return true;
 }
 
-
 bool FromString (const string& s, char* value)
 {
 	strcpy (value, s.c_str ());
 	return true;
 }
-
 
 /*
 	// Seems to conflict with standard scalar types
@@ -163,7 +147,6 @@ bool FromString (const string& s, Bool& value)
 	return false;
 }
 */
-
 
 bool FromString (const string& s, CloseActionType& value)
 {
@@ -182,34 +165,14 @@ bool FromString (const string& s, EmDevice& value)
 	return value.Supported () != 0;
 }
 
-
 bool FromString (const string& s, EmDirRef& value)
 {
 	return value.FromPrefString (s);
 }
 
-
-bool FromString (const string& s, EmErrorHandlingOption& value)
-{
-	CHECK_STRING (s, "ShowDialog",	kShow)
-	CHECK_STRING (s, "Continue",	kContinue)
-	CHECK_STRING (s, "Quit",		kQuit)
-	CHECK_STRING (s, "NextGremlin",	kSwitch)
-
-	return false;
-}
-
-
 bool FromString (const string& s, EmFileRef& value)
 {
 	return value.FromPrefString (s);
-}
-
-
-bool FromString (const string& s, EmTransportDescriptor& value)
-{
-	value = EmTransportDescriptor (s);
-	return true;
 }
 
 
@@ -227,12 +190,10 @@ string ToString (bool value)
 	return "0";
 }
 
-
 string ToString (char value)
 {
 	return string (1, value);
 }
-
 
 string ToString (signed char value)
 {
@@ -241,14 +202,12 @@ string ToString (signed char value)
 	return buffer;
 }
 
-
 string ToString (unsigned char value)
 {
 	char	buffer[kMaxIntStringSize];
 	sprintf (buffer, "%hu", (unsigned short) value);
 	return buffer;
 }
-
 
 string ToString (signed short value)
 {
@@ -257,14 +216,12 @@ string ToString (signed short value)
 	return buffer;
 }
 
-
 string ToString (unsigned short value)
 {
 	char	buffer[kMaxIntStringSize];
 	sprintf (buffer, "%hu", value);
 	return buffer;
 }
-
 
 string ToString (signed int value)
 {
@@ -273,14 +230,12 @@ string ToString (signed int value)
 	return buffer;
 }
 
-
 string ToString (unsigned int value)
 {
 	char	buffer[kMaxIntStringSize];
 	sprintf (buffer, "%u", value);
 	return buffer;
 }
-
 
 string ToString (signed long value)
 {
@@ -289,7 +244,6 @@ string ToString (signed long value)
 	return buffer;
 }
 
-
 string ToString (unsigned long value)
 {
 	char	buffer[kMaxIntStringSize];
@@ -297,18 +251,15 @@ string ToString (unsigned long value)
 	return buffer;
 }
 
-
 string ToString (const string& value)
 {
 	return value;
 }
 
-
 string ToString (const char* value)
 {
 	return string (value);
 }
-
 
 /*
 
@@ -319,7 +270,6 @@ string ToString (Bool value)
 }
 
 */
-
 
 string ToString (CloseActionType value)
 {
@@ -333,40 +283,17 @@ string ToString (CloseActionType value)
 	return "";
 }
 
-
 string ToString (const EmDevice& value)
 {
 	return value.GetIDString ();
 }
-
 
 string ToString (const EmDirRef& value)
 {
 	return value.ToPrefString ();
 }
 
-
-string ToString (EmErrorHandlingOption value)
-{
-	switch (value)
-	{
-		case kShow:			return "ShowDialog";
-		case kContinue:		return "Continue";
-		case kQuit:			return "Quit";
-		case kSwitch:		return "NextGremlin";
-	}
-
-	return "";
-}
-
-
 string ToString (const EmFileRef& value)
 {
 	return value.ToPrefString ();
-}
-
-
-string ToString (const EmTransportDescriptor& value)
-{
-	return value.GetDescriptor ();
 }

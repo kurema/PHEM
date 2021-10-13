@@ -75,7 +75,7 @@ class EmStreamFile : public EmStream
 
 		void					Close			(void);
 
-		void					Throw			(int) const;
+		void					Throw			(ErrCode) const;
 		void					SetFileNameParameter	(void) const;
 
 	private:

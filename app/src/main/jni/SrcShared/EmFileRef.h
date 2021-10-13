@@ -36,7 +36,6 @@ enum EmFileType
 	kFileTypeApplication,
 	kFileTypeROM,
 	kFileTypeSession,
-	kFileTypeEvents,
 	kFileTypePreference,
 	kFileTypePalmApp,
 	kFileTypePalmDB,
@@ -127,10 +126,10 @@ class EmFileRef
 	private:
 		void					MaybePrependCurrentDirectory (void);
 		void					MaybeResolveLink	(void);
-		void					MaybeNormalize		(void);
 
 	private:
 		string					fFilePath;
+
 #endif
 };
 

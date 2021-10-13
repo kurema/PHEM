@@ -114,7 +114,7 @@ class EmRegsEZVisor : public EmRegsEZ
 
 		virtual Bool			GetLCDScreenOn			(void);
 		virtual Bool			GetLCDBacklightOn		(void);
-		virtual Bool			GetLineDriverState		(EmUARTDeviceType type);
+		virtual Bool			GetSerialPortOn			(int uartNum);
 
 		virtual uint8			GetPortInputValue		(int);
 		virtual uint8			GetPortInternalValue	(int);

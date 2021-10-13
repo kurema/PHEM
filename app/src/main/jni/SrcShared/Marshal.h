@@ -14,26 +14,41 @@
 #ifndef _MARSHAL_H_
 #define _MARSHAL_H_
 
-#include "EmBankMapped.h"		// UnmapPhysicalMemory
-#include "EmMemory.h"			// EmMemGet32, EmMemGet16, EmMemGet8, EmMem_memcpy
-#include "EmPalmStructs.h"		// EmProxy
-#include "EmSubroutine.h"		// EmSubroutine
+#include "EmMemory.h"			// EmMemGet32, EmMemGet16, EmMemGet8
 #include "Platform.h"			// Platform::AllocateMemory
+#include "UAE.h"				// m68k_areg
+#include "UAE_Utils.h"			// uae_memcpy
+
+#ifdef SONY_ROM
+#include "SonyShared\ExpansionMgr.h"
+#include "SonyShared\VFSMgr.h"
+#include "SonyShared\SlotDrvLib.h"	// for Sony & SlotDriver Lib, CardMetricsType
+#endif
 
 
 /* ===========================================================================
 
 	Functions and macros for helping with marshaling and unmarshaling
 	parameters from and to the emulated process's stack.  First, the stack
-	is described with a class called EmSubroutine which lists the function's
-	parameters in order.  For example, the definition for NetLibDmReceive is
-	as follows:
+	is described with a struct called StackFrame which lists the function's
+	parameters in order. For example, the StackFrame definition for
+	NetLibDmReceive is as follows:
 
-		EmSubroutine	sub ("Int16", "UInt16 libRefNum, NetSocketRef socket,"
-			"void *recordP, UInt32 recordOffset, UInt16 rcvLen, UInt16 flags, "
-			"void *fromAddrP, UInt16 *fromLenP, Int32 timeout, Err *errP");
+		struct StackFrame
+		{
+			Word			libRefNum;
+			NetSocketRef	socketRef;
+			VoidPtr			recordP;
+			DWord			recordOffset;
+			Word			rcvLen;
+			Word			flags;
+			VoidPtr			fromAddrP;
+			WordPtr			fromLenP;
+			SDWord			timeout;
+			Err*			errP;
+		};
 
-	This class describes the format of the parameters on the stack.  You
+	This struct describes the format of the parameters on the stack. You
 	then use one of several macros to fetch and possibly return values from
 	and to those parameters.
 
@@ -105,135 +120,17 @@
 
 =========================================================================== */
 
-struct HostGremlinInfoType;
-struct HostStatType;
-struct HostTmType;
-struct HostUTimeType;
+#define PARAM_VAL(type, name)	\
+	ParamVal<type, offsetof(StackFrame, name)>	name
 
-typedef struct ExgSocketType*	ExgSocketPtr;
-typedef UInt8*					UInt8Ptr;
+#define PARAM_REF(type, name, io)	\
+	ParamRef<type, offsetof(StackFrame, name), io>	name
 
+#define PARAM_PTR(type, name, len, io)	\
+	ParamPtr<type, offsetof(StackFrame, name), io>	name(len)
 
-#define CALLED_SETUP(return_decl, parameter_decl)			\
-	static EmSubroutine	sub;								\
-															\
-	static Bool initialized;								\
-	if (!initialized)										\
-	{														\
-		initialized = true;									\
-		sub.DescribeDecl (return_decl, parameter_decl);		\
-	}														\
-															\
-	sub.PrepareStack (kForBeingCalled, false)
-
-
-#define CALLED_SETUP_HC(return_decl, parameter_decl)		\
-	static EmSubroutine	sub;								\
-															\
-	static Bool initialized;								\
-	if (!initialized)										\
-	{														\
-		initialized = true;									\
-		sub.DescribeDecl (return_decl, "HostControlSelectorType _selector, " parameter_decl);		\
-	}														\
-															\
-	sub.PrepareStack (kForBeingCalled, false)
-
-
-#define CALLED_SETUP_STDARG(return_decl, parameter_decl)	\
-	EmSubroutine	sub;									\
-	sub.DescribeDecl (return_decl, parameter_decl);			\
-	sub.PrepareStack (kForBeingCalled, true)
-
-
-#define CALLED_SETUP_STDARG_HC(return_decl, parameter_decl)	\
-	EmSubroutine	sub;									\
-	sub.DescribeDecl (return_decl, "HostControlSelectorType selector, " parameter_decl);			\
-	sub.PrepareStack (kForBeingCalled, true)
-
-
-#define CALLER_SETUP(return_decl, parameter_decl)			\
-	static EmSubroutine	sub;								\
-															\
-	static Bool initialized;								\
-	if (!initialized)										\
-	{														\
-		initialized = true;									\
-		sub.DescribeDecl (return_decl, parameter_decl);		\
-	}														\
-															\
-	sub.PrepareStack (kForCalling, false)
-
-
-#define GET_RESULT_VAL(type)								\
-	type result;											\
-	Marshal::GetReturnVal (sub, result);
-
-
-#define GET_RESULT_PTR()									\
-	emuptr result;											\
-	Marshal::GetReturnVal (sub, result);
-
-
-#define PUT_RESULT_VAL(type, val)							\
-	Marshal::PutReturnVal (sub, (type) val);
-
-
-#define PUT_RESULT_PTR(type, val)							\
-	Marshal::PutReturnVal (sub, (type) val);
-
-
-#define RETURN_RESULT_VAL(type)								\
-	GET_RESULT_VAL (type);									\
-	return result
-
-
-#define RETURN_RESULT_PTR(type)								\
-	GET_RESULT_PTR ();										\
-	return (type) result
-
-
-
-// Macros used when being called by emulated code
-// (e.g., from trap patches).
-
-#define CALLED_GET_PARAM_VAL(type, name)					\
-	ParamVal<type>		name (sub, #name)
-
-#define CALLED_GET_PARAM_REF(type, name, io)				\
-	ParamRef<type, io>	name (sub, #name)
-
-#define CALLED_GET_PARAM_PTR(type, name, len, io)			\
-	ParamPtr<type, io>	name (sub, #name, len)
-
-#define CALLED_GET_PARAM_STR(type, name)					\
-	ParamStr<type>		name (sub, #name)
-
-#define CALLED_PUT_PARAM_REF(name)							\
-	name.Put ()
-
-
-// Macros used when calling emulated code
-// (e.g., the stuff in ROMStubs.cpp)
-
-#define CALLER_PUT_PARAM_VAL(type, name)					\
-	PushParamVal<type>		_##name (sub, #name, (type) name);		\
-	/* *Use* the variable this way.  GCC will complain that the */	\
-	/* PushParamVal variable is unused otherwise. */				\
-	((void) _##name)
-
-#define CALLER_PUT_PARAM_REF(type, name, io)				\
-	PushParamRef<type, io>	_##name (sub, #name, (type*) name)
-
-#define CALLER_PUT_PARAM_PTR(type, name, len, io)			\
-	PushParamPtr<type, io>	_##name (sub, #name, name, len)
-
-#define CALLER_PUT_PARAM_STR(type, name)					\
-	PushParamStr<type>		_##name (sub, #name, name)
-
-#define CALLER_GET_PARAM_REF(name)							\
-	_##name.Get ()
-
+#define PARAM_STR(type, name)	\
+	ParamStr<type, offsetof(StackFrame, name)>	name
 
 class Marshal
 {
@@ -242,39 +139,52 @@ class Marshal
 //		static const int	kInput	= 0x01;
 //		static const int	kOutput	= 0x02;
 //		static const int	kInOut	= kInput | kOutput;
-		enum
-		{
+		enum {
 			kInput	= 0x01,
 			kOutput	= 0x02,
 			kInOut	= kInput | kOutput
 		};
 
-		#define INPUT(io)	(((io) & Marshal::kInput) != 0)
-		#define OUTPUT(io)	(((io) & Marshal::kOutput) != 0)
+		#define INPUT(io) (((io) & Marshal::kInput) != 0)
+		#define OUTPUT(io) (((io) & Marshal::kOutput) != 0)
 
-		static void*			GetBuffer (emuptr p, long len);
+		static void*				GetBuffer (emuptr p, long len);
 #if (__GNUC__ == 2)
-		static void				PutBuffer (emuptr p, unsigned char* const buf, long len)
-								{
-									if (p)
+		static void					PutBuffer (emuptr p, unsigned char*& buf, long len)
 									{
-										EmMem_memcpy (p, (void*) buf, len);
-										void* b = buf;
-										Platform::DisposeMemory (b);
+										if (p)
+										{
+											uae_memcpy (p, (void*) buf, len);
+											Platform::DisposeMemory (buf);
+											buf = NULL;
+										}
 									}
-								}
 #else
 		template <class T>
-		static void				PutBuffer (emuptr p, T* const buf, long len)
-								{
-									if (p)
+		static void					PutBuffer (emuptr p, T*& buf, long len)
 									{
-										EmMem_memcpy (p, (void*) buf, len);
-										void* b = buf;
-										Platform::DisposeMemory (b);
+										if (p)
+										{
+											uae_memcpy (p, (void*) buf, len);
+											Platform::DisposeMemory (buf);
+											buf = NULL;
+										}
 									}
-								}
 #endif
+		static EventType			GetEventType (emuptr p);
+		static void					PutEventType (emuptr p, EventType&);
+
+		static NetSocketAddrType	GetNetSocketAddrType (emuptr p);
+		static void					PutNetSocketAddrType (emuptr p, NetSocketAddrType&);
+
+		static NetIOParamType		GetNetIOParamType (emuptr p);
+		static void					PutNetIOParamType (emuptr p, NetIOParamType&);
+
+		static NetHostInfoBufType	GetNetHostInfoBufType (emuptr p);
+		static void					PutNetHostInfoBufType (emuptr p, NetHostInfoBufType&);
+
+		static NetServInfoBufType	GetNetServInfoBufType (emuptr p);
+		static void					PutNetServInfoBufType (emuptr p, NetServInfoBufType&);
 
 
 	/* ===========================================================================
@@ -285,108 +195,77 @@ class Marshal
 		type we ever fetch.  Those overloaded functions appear below.
 	=========================================================================== */
 
-#define DECLARE_POINTER_MARSHALLER(type)									\
-		inline static void GetParamVal (EmSubroutine& sub, EmParamNameArg name, type*& v)		\
-			{ sub.GetParamVal (name, (emuptr&) v); }						\
-																			\
-		inline static void PutParamVal (EmSubroutine& sub, EmParamNameArg name, const type* v)	\
-			{ sub.SetParamVal (name, (emuptr) v); }							\
-																			\
-		inline static void PutReturnVal (EmSubroutine& sub, const type* v)	\
-			{ sub.SetReturnVal ((emuptr) v); }
+		inline static void GetParamVal (long loc, int8& v)
+			{ v = (int8) EmMemGet8 (loc); }
+
+		inline static void GetParamVal (long loc, uint8& v)
+			{ v = EmMemGet8 (loc); }
+
+		inline static void GetParamVal (long loc, int16& v)
+			{ v = (int16) EmMemGet16 (loc); }
+
+		inline static void GetParamVal (long loc, uint16& v)
+			{ v = EmMemGet16 (loc); }
+
+		inline static void GetParamVal (long loc, int32& v)
+			{ v = (int32) EmMemGet32 (loc); }
+
+		inline static void GetParamVal (long loc, uint32& v)
+			{ v = EmMemGet32 (loc); }
+
+		inline static void GetParamVal (long loc, EventType& v)
+			{ v = GetEventType (loc); }
+
+		inline static void GetParamVal (long loc, NetSocketAddrType& v)
+			{ v = GetNetSocketAddrType (loc); }
+
+		inline static void GetParamVal (long loc, NetIOParamType& v)
+			{ v = GetNetIOParamType (loc); }
+
+		inline static void GetParamVal (long loc, NetHostInfoBufType& v)
+			{ v = GetNetHostInfoBufType (loc); }
+
+		inline static void GetParamVal (long loc, NetServInfoBufType& v)
+			{ v = GetNetServInfoBufType (loc); }
 
 
-		DECLARE_POINTER_MARSHALLER (void)
-		DECLARE_POINTER_MARSHALLER (FormType)
-		DECLARE_POINTER_MARSHALLER (ExgSocketType)
-		DECLARE_POINTER_MARSHALLER (_opaque)
+		inline static void PutParamVal (long loc, const int8& v)
+			{ EmMemPut8 (loc, v); }
 
+		inline static void PutParamVal (long loc, const uint8& v)
+			{ EmMemPut8 (loc, v); }
 
-#define DECLARE_SCALAR_MARSHALLER(type, asType, num_bits)				\
-		inline static void GetParamVal (EmSubroutine& sub, EmParamNameArg name, type& v)	\
-		{																\
-			asType temp;												\
-			sub.GetParamVal (name, temp);								\
-			v = (type) temp;											\
-		}																\
-																		\
-		inline static void PutParamVal (EmSubroutine& sub, EmParamNameArg name, type v)		\
-			{ sub.SetParamVal (name, (asType) v); }						\
-																		\
-		inline static void GetParamRef (emuptr p, type& v)				\
-			{ v = (type) EmMemGet##num_bits (p); }						\
-																		\
-		inline static void PutParamRef (emuptr p, const type& v)		\
-			{ EmMemPut##num_bits (p, (asType) v); }						\
-																		\
-		inline static void GetReturnVal (EmSubroutine& sub, type& v)	\
-		{																\
-			asType temp;												\
-			sub.GetReturnVal (temp);									\
-			v = (type) temp;											\
-		}																\
-																		\
-		inline static void PutReturnVal (EmSubroutine& sub, type v)		\
-			{ sub.SetReturnVal ((asType&) v); }							\
-																		\
-		inline static long GetBufSize (const type&)						\
-			{ return sizeof(asType); }
+		inline static void PutParamVal (long loc, const int16& v)
+			{ EmMemPut16 (loc, v); }
 
+		inline static void PutParamVal (long loc, const uint16& v)
+			{ EmMemPut16 (loc, v); }
 
-		DECLARE_SCALAR_MARSHALLER (int8, int8, 8)
-		DECLARE_SCALAR_MARSHALLER (uint8, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (int16, int16, 16)
-		DECLARE_SCALAR_MARSHALLER (uint16, uint16, 16)
-		DECLARE_SCALAR_MARSHALLER (int32, int32, 32)
-		DECLARE_SCALAR_MARSHALLER (uint32, uint32, 32)
+		inline static void PutParamVal (long loc, const int32& v)
+			{ EmMemPut32 (loc, v); }
 
-		DECLARE_SCALAR_MARSHALLER (ClipboardFormatType, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (DlkSyncStateType, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (FormObjectKind, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (LocalIDKind, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (NetSocketAddrEnum, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (NetSocketTypeEnum, uint8, 8)
-		DECLARE_SCALAR_MARSHALLER (SystemPreferencesChoice, uint8, 8)
+		inline static void PutParamVal (long loc, const uint32& v)
+			{ EmMemPut32 (loc, v); }
 
-		DECLARE_SCALAR_MARSHALLER (SysAppInfoPtr, uint32, 32)
-		DECLARE_SCALAR_MARSHALLER (UInt8Ptr, uint32, 32)
+		inline static void PutParamVal (long loc, EventType& v)
+			{ PutEventType (loc, v); }
 
+		inline static void PutParamVal (long loc, NetSocketAddrType& v)
+			{ PutNetSocketAddrType (loc, v); }
 
-#define DECLARE_STRUCT_MARSHALLER(type)								\
-		static void			Get##type (emuptr p, type&);			\
-		static void			Put##type (emuptr p, const type&);		\
-																	\
-		static long			GetBufSize (const type&)				\
-			{ return EmProxy##type::GetSize (); }					\
-																	\
-		inline static void	GetParamRef (emuptr p, type& v)			\
-			{ Get##type (p, v); }									\
-																	\
-		inline static void	PutParamRef (emuptr p, const type& v)	\
-			{ Put##type (p, v); }
+		inline static void PutParamVal (long loc, NetIOParamType& v)
+			{ PutNetIOParamType (loc, v); }
 
+		inline static void PutParamVal (long loc, NetHostInfoBufType& v)
+			{ PutNetHostInfoBufType (loc, v); }
 
-		DECLARE_STRUCT_MARSHALLER (DlkServerSessionType)
-		DECLARE_STRUCT_MARSHALLER (DmSearchStateType)
-		DECLARE_STRUCT_MARSHALLER (EventType)
-		DECLARE_STRUCT_MARSHALLER (FieldAttrType)
-		DECLARE_STRUCT_MARSHALLER (HostGremlinInfoType)
-		DECLARE_STRUCT_MARSHALLER (HostStatType)
-		DECLARE_STRUCT_MARSHALLER (HostTmType)
-		DECLARE_STRUCT_MARSHALLER (HostUTimeType)
-		DECLARE_STRUCT_MARSHALLER (HwrBatCmdReadType)
-		DECLARE_STRUCT_MARSHALLER (NetSocketAddrType)
-		DECLARE_STRUCT_MARSHALLER (NetIOParamType)
-		DECLARE_STRUCT_MARSHALLER (NetHostInfoBufType)
-		DECLARE_STRUCT_MARSHALLER (NetServInfoBufType)
-		DECLARE_STRUCT_MARSHALLER (PointType)
-		DECLARE_STRUCT_MARSHALLER (RectangleType)
-		DECLARE_STRUCT_MARSHALLER (SndCommandType)
-		DECLARE_STRUCT_MARSHALLER (SysAppInfoType)
-		DECLARE_STRUCT_MARSHALLER (SysKernelInfoType)
-		DECLARE_STRUCT_MARSHALLER (SysNVParamsType)
+		inline static void PutParamVal (long loc, NetServInfoBufType& v)
+			{ PutNetServInfoBufType (loc, v); }
+
+#ifdef SONY_ROM
+#include	"SonyShared\MarshalSony.h"
+#endif
 };
-
 
 /* ===========================================================================
 	Class that manages an immediate value from the emulated stack. This
@@ -395,19 +274,19 @@ class Marshal
 	of it, nor can the value be written back to the stack.
 =========================================================================== */
 
-template <typename T>
+template <typename T, long offset>
 class ParamVal
 {
 	public:
-						ParamVal (EmSubroutine& sub, EmParamNameArg name)
-						{
-							Marshal::GetParamVal (sub, name, fVal);
-						}
+				ParamVal (void)
+				{
+					Marshal::GetParamVal (m68k_areg (regs, 7) + offset, fVal);
+				}
 
-						operator T(void) { return fVal; }
+				operator T(void) { return fVal; }
 
 	private:
-		T				fVal;
+		T		fVal;
 };
 
 
@@ -424,50 +303,35 @@ class ParamVal
 	copy is copied back to emulated memory when the Put method is called.
 =========================================================================== */
 
-template <typename T, long inOut>
+template <typename T, long offset, long inOut>
 class ParamRef
 {
 	public:
-						ParamRef (EmSubroutine& sub, EmParamNameArg name) :
-							fSub (&sub),
-							fName (name),
-							fPtr (EmMemNULL)
-						{
-							// Get and cache the pointer to the data.
+				ParamRef (void)
+				{
+					Marshal::GetParamVal (m68k_areg (regs, 7) + offset, fPtr);
+					if (fPtr && INPUT(inOut))
+					{
+						Marshal::GetParamVal (fPtr, fVal);
+					}
+				}
 
-							fSub->GetParamVal (fName.c_str (), fPtr);
+		void	Put (void)
+				{
+					if (fPtr && OUTPUT(inOut))
+					{
+						Marshal::PutParamVal (fPtr, fVal);
+					}
+				}
 
-							// If there's a pointer and this is an input
-							// variable, get the data.
+				operator T*(void) { return fPtr ? &fVal : NULL; }
+		T		operator *(void) const { return fVal; }
 
-							if (fPtr && INPUT(inOut))
-							{
-								Marshal::GetParamRef (fPtr, fVal);
-							}
-						}
-
-		void			Put (void)
-						{
-							// If there's a pointer and this is an output
-							// variable, store the data.
-
-							if (fPtr && OUTPUT(inOut))
-							{
-								Marshal::PutParamRef (fPtr, fVal);
-							}
-						}
-
-						operator T*(void) { return fPtr ? &fVal : NULL; }
-		const T&		operator *(void) const { return fVal; }
-		T&				operator *(void) { return fVal; }
-
-						operator emuptr (void) { return fPtr; }
+		operator emuptr (void) { return fPtr; }
 
 	private:
-		EmSubroutine*	fSub;
-		EmParamName		fName;
-		emuptr			fPtr;
-		T				fVal;
+		emuptr	fPtr;
+		T		fVal;
 };
 
 
@@ -484,54 +348,46 @@ class ParamRef
 	release the lock block of memory.
 =========================================================================== */
 
-template <typename T, long inOut>
+template <typename T, long offset, long inOut>
 class ParamPtr
 {
 	public:
-						ParamPtr (EmSubroutine& sub, EmParamNameArg name, long len) :
-							fSub (&sub),
-							fName (name),
-							fPtr (EmMemNULL),
-							fLen (len),
-							fVal (NULL)
+				ParamPtr (long len) :
+					fLen (len),
+					fVal (NULL)
+				{
+					Marshal::GetParamVal (m68k_areg (regs, 7) + offset, fPtr);
+					if (fPtr)
+					{
+						fVal = (T*) Platform::AllocateMemory (fLen);
+						if (fVal && INPUT(inOut))
 						{
-							// Get and cache the pointer to the data.
-
-							fSub->GetParamVal (fName.c_str (), fPtr);
-
-							if (fPtr)
-							{
-								fVal = (T*) Platform::AllocateMemory (fLen);
-								if (fVal && INPUT(inOut))
-								{
-									EmMem_memcpy ((void*) fVal, fPtr, fLen);
-								}
-							}
+							uae_memcpy ((void*) fVal, fPtr, fLen);
 						}
+					}
+				}
 
-						~ParamPtr ()	// !!! Update comments about d'tors and disposing memory
-						{
-							Platform::DisposeMemory (fVal);
-						}
+				~ParamPtr ()	// !!! Update comments about d'tors and disposing memory
+				{
+					Platform::DisposeMemory (fVal);
+				}
 
-		void			Put (void)
-						{
-							if (fPtr && fVal && OUTPUT(inOut))
-							{
-								EmMem_memcpy (fPtr, (const void*) fVal, fLen);
-							}
-						}
+		void	Put (void)
+				{
+					if (fPtr && fVal && OUTPUT(inOut))
+					{
+						uae_memcpy (fPtr, (const void*) fVal, fLen);
+					}
+				}
 
-						operator T*(void) { return fVal; }
+				operator T*(void) { return fVal; }
 
-						operator emuptr (void) { return fPtr; }
+		operator emuptr (void) { return fPtr; }
 
 	private:
-		EmSubroutine*	fSub;
-		EmParamName		fName;
-		emuptr			fPtr;
-		long			fLen;
-		T*				fVal;
+		long	fLen;
+		emuptr	fPtr;
+		T*		fVal;
 };
 
 
@@ -540,216 +396,47 @@ class ParamPtr
 	pointer on the emulated stack.  The input pointer can be NULL. The
 	elements of the string can be anything, but will normally be Char
 	(actually, they may *have* to be Char, since I get the length of the
-	string by calling EmMem_strlen).  The string is modifiable in-place, but
+	string by calling uae_strlen).  The string is modifiable in-place, but
 	any changes are not copied back to emulated memory (this behavior can be
 	changed if needed).
 =========================================================================== */
 
-template <typename T>
+template <typename T, long offset>
 class ParamStr
 {
 	public:
-						ParamStr (EmSubroutine& sub, EmParamNameArg name) :
-							fSub (&sub),
-							fName (name),
-							fPtr (EmMemNULL),
-							fVal (NULL)
+				ParamStr (void)
+				{
+					Marshal::GetParamVal (m68k_areg (regs, 7) + offset, fPtr);
+					if (fPtr)
+					{
+						fVal = (T*) Platform::AllocateMemory (uae_strlen (fPtr) + 1);
+						if (fVal)
 						{
-							fSub->GetParamVal (fName.c_str (), fPtr);
-
-							if (fPtr)
-							{
-								fVal = (T*) Platform::AllocateMemory (EmMem_strlen (fPtr) + 1);
-								if (fVal)
-								{
-									EmMem_strcpy (fVal, fPtr);
-								}
-							}
+							uae_strcpy (fVal, fPtr);
 						}
+					}
+				}
 
-						~ParamStr ()	// !!! Update comments about d'tors and disposing memory
-						{
-							Platform::DisposeMemory (fVal);
-						}
+				~ParamStr ()	// !!! Update comments about d'tors and disposing memory
+				{
+					Platform::DisposeMemory (fVal);
+				}
 
-		void			Put (void)
-						{
-						}
+		void	Put (void)
+				{
+					// !!! Do something here?
+				}
 
-						operator T*(void) { return fVal; }
+				operator const T*(void) { return fVal; }
+				operator T*(void) { return fVal; }
 
-						operator emuptr (void) { return fPtr; }
+		operator emuptr (void) { return fPtr; }
 
 	private:
-		EmSubroutine*	fSub;
-		EmParamName		fName;
-		emuptr			fPtr;
-		T*				fVal;
+		emuptr	fPtr;
+		T*		fVal;
 };
 
-
-template <typename T>
-class PushParamVal
-{
-	public:
-						PushParamVal (EmSubroutine& sub, EmParamNameArg name, T val)
-						{
-							Marshal::PutParamVal (sub, name, val);
-						}
-};
-
-template <typename T, long inOut>
-class PushParamRef
-{
-	public:
-						PushParamRef (EmSubroutine& sub, EmParamNameArg name, T* ptr) :
-							fSub (&sub),
-							fName (name),
-							fHostPtr (ptr),
-							fMappedData (NULL),
-							fMappedPtr (EmMemNULL)
-						{
-							if (fHostPtr)
-							{
-								// Allocate a buffer big enough for the mapped/translated data.
-
-								long	size = Marshal::GetBufSize (*fHostPtr);
-								fMappedData = Platform::AllocateMemory (size);
-
-								// Map the buffer
-
-								EmBankMapped::MapPhysicalMemory (fMappedData, size);
-								fMappedPtr = EmBankMapped::GetEmulatedAddress (fMappedData);
-
-								// Copy/translate the data into it.
-
-								if (INPUT(inOut))
-								{
-									Marshal::PutParamRef (fMappedPtr, *fHostPtr);
-								}
-
-								// Pass the pointer to the data.
-
-								fSub->SetParamVal (fName.c_str (), fMappedPtr);
-							}
-							else
-							{
-								fMappedPtr = EmMemNULL;
-							}
-
-							// Pass the pointer to the data.
-
-							fSub->SetParamVal (fName.c_str (), fMappedPtr);
-						}
-
-						~PushParamRef (void)
-						{
-							if (fMappedData)
-							{
-								EmBankMapped::UnmapPhysicalMemory (fMappedData);
-								Platform::FreeMemory (fMappedData);
-							}
-						}
-
-		void			Get (void)
-						{
-							if (fHostPtr && OUTPUT(inOut))
-							{
-								Marshal::GetParamRef (fMappedPtr, *fHostPtr);
-							}
-						}
-
-	private:
-		EmSubroutine*	fSub;
-		EmParamName		fName;
-		T*				fHostPtr;
-		void*			fMappedData;
-		emuptr			fMappedPtr;
-};
-
-template <typename T, long inOut>
-class PushParamPtr
-{
-	public:
-						PushParamPtr (EmSubroutine& sub, EmParamNameArg name, const T* ptr, long size) :
-							fSub (&sub),
-							fName (name),
-							fHostPtr (ptr),
-							fMappedPtr (EmMemNULL)
-						{
-							if (fHostPtr)
-							{
-								// Map the buffer
-
-								EmBankMapped::MapPhysicalMemory (fHostPtr, size);
-								fMappedPtr = EmBankMapped::GetEmulatedAddress (fHostPtr);
-							}
-							else
-							{
-								fMappedPtr = EmMemNULL;
-							}
-
-							// Pass the pointer to the data.
-
-							fSub->SetParamVal (fName.c_str (), fMappedPtr);
-						}
-
-						~PushParamPtr (void)
-						{
-							if (fHostPtr)
-							{
-								EmBankMapped::UnmapPhysicalMemory (fHostPtr);
-							}
-						}
-
-	private:
-		EmSubroutine*	fSub;
-		EmParamName		fName;
-		const T*		fHostPtr;
-		emuptr			fMappedPtr;
-};
-
-template <typename T>
-class PushParamStr
-{
-	public:
-						PushParamStr (EmSubroutine& sub, EmParamNameArg name, const T * const ptr) :
-							fSub (&sub),
-							fName (name),
-							fHostPtr (ptr),
-							fMappedPtr (EmMemNULL)
-						{
-							if (fHostPtr)
-							{
-								// Map the buffer
-
-								long	size = strlen (ptr) + 1;
-								EmBankMapped::MapPhysicalMemory (fHostPtr, size);
-								fMappedPtr = EmBankMapped::GetEmulatedAddress (fHostPtr);
-							}
-							else
-							{
-								fMappedPtr = EmMemNULL;
-							}
-
-							// Pass the pointer to the data.
-
-							fSub->SetParamVal (fName.c_str (), fMappedPtr);
-						}
-
-						~PushParamStr (void)
-						{
-							if (fHostPtr)
-							{
-								EmBankMapped::UnmapPhysicalMemory (fHostPtr);
-							}
-						}
-
-	private:
-		EmSubroutine*	fSub;
-		EmParamName		fName;
-		const T* const	fHostPtr;
-		emuptr			fMappedPtr;
-};
 
 #endif	// _MARSHAL_H_

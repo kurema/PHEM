@@ -15,9 +15,8 @@
 #include "EmRegsEZ.h"
 #include "EmRegsEZPrv.h"
 
-#include "Byteswapping.h"		// Canonical
 #include "EmHAL.h"				// EmHAL
-#include "EmMemory.h"			// gMemAccessFlags, EmMem_memcpy
+#include "EmMemory.h"			// gMemAccessFlags
 #include "EmPixMap.h"			// SetSize, SetRowBytes, etc.
 #include "EmScreen.h"			// EmScreenUpdateInfo
 #include "EmSession.h"			// GetDevice
@@ -28,9 +27,7 @@
 #include "PreferenceMgr.h"		// Preference
 #include "SessionFile.h"		// WriteHwrDBallEZType, etc.
 #include "UAE.h"				// regs, SPCFLAG_INT
-
-/* Update for recent GCC */
-#include <cstddef>
+#include "UAE_Utils.h"			// uae_memcpy
 
 #include "PalmPack.h"
 #define NON_PORTABLE
@@ -87,13 +84,13 @@ static const HwrM68EZ328Type	kInitial68EZ328RegisterValues =
 	0x2430,		// Word		pllControl;						// $200: PLL Control Register
 	0x0123,		// Word		pllFreqSel;						// $202: PLL Frequency Select Register
 	0,		// !!! ---> Marked as reserved in 1.4 Word		pllTest;						// $204: PLL Test Register (do not access)
-	0,			// Byte											___filler44;
+	{ 0 },		// Byte											___filler44;
 	0x1F,		// Byte		pwrControl;						// $207: Power Control Register
 
 	{ 0 },		// Byte											___filler3[0x300-0x208];
 
 	0x00,		// Byte		intVector;						// $300: Interrupt Vector Register
-	0,			// Byte											___filler4;
+	{ 0 },		// Byte											___filler4;
 	0x0000,		// Word		intControl;						// $302: Interrupt Control Register
 	0x00FF,		// Word		intMaskHi;						// $304: Interrupt Mask Register/HIGH word
 	0xFFFF,		// Word		intMaskLo;						// $306: Interrupt Mask Register/LOW word
@@ -186,7 +183,7 @@ static const HwrM68EZ328Type	kInitial68EZ328RegisterValues =
 	{ 0 },		// Byte											___filler28[0xA00-0x90C];
 
 	0x00000000,	// DWord	lcdStartAddr;					// $A00: Screen Starting Address Register
-	0,			// Byte											___filler29;
+	{ 0 },		// Byte											___filler29;
 	0xFF,		// Byte		lcdPageWidth;					// $A05: Virtual Page Width Register
 	{ 0 },		// Byte											___filler30[2];
 	0x03FF,		// Word		lcdScreenWidth;					// $A08: Screen Width Register
@@ -195,17 +192,17 @@ static const HwrM68EZ328Type	kInitial68EZ328RegisterValues =
 	0x0000,		// Word		lcdCursorXPos;					// $A18: Cursor X Position
 	0x0000,		// Word		lcdCursorYPos;					// $A1A:	Cursor Y Position
 	0x0101,		// Word		lcdCursorWidthHeight;			// $A1C: Cursor Width and Height
-	0,			// Byte											___filler32;
+	{ 0 },		// Byte											___filler32;
 	0x7F,		// Byte		lcdBlinkControl;				// $A1F: Blink Control Register
 	0x00,		// Byte		lcdPanelControl;				// $A20: Panel Interface Control Register
 	0x00,		// Byte		lcdPolarity;					// $A21: Polarity Config Register
-	0,			// Byte											___filler33;						
+	{ 0 },		// Byte											___filler33;						
 	0x00,		// Byte		lcdACDRate;						// $A23: ACD (M) Rate Control Register
-	0,			// Byte											___filler34;
+	{ 0 },		// Byte											___filler34;
 	0x00,		// Byte		lcdPixelClock;					// $A25: Pixel Clock Divider Register
-	0,			// Byte											___filler35;
+	{ 0 },		// Byte											___filler35;
 	0x40,		// Byte		lcdClockControl;				// $A27: Clocking Control Register
-	0,			// Byte											___filler36;
+	{ 0 },		// Byte											___filler36;
 	0xFF,		// Byte		lcdRefreshRateAdj;				// $A29: Refresh Rate Adjustment Register
 	{ 0 },		// Byte											___filler2003[0xA2D-0xA2A];
 	0x00,		// Byte		lcdPanningOffset;				// $A2D: Panning Offset Register
@@ -213,10 +210,10 @@ static const HwrM68EZ328Type	kInitial68EZ328RegisterValues =
 	{ 0 },		// Byte											___filler37[0xA31-0xA2E];
 
 	0xB9,		// Byte		lcdFrameRate;					// $A31: Frame Rate Control Modulation Register
-	0,			// Byte											___filler2004;
+	{ 0 },		// Byte											___filler2004;
 	0x84,		// Byte		lcdGrayPalette;					// $A33: Gray Palette Mapping Register
 	0x00,		// Byte		lcdReserved;					// $A34: Reserved
-	0,			// Byte											___filler2005;
+	{ 0 },		// Byte											___filler2005;
 	0x0000,		// Word		lcdContrastControlPWM;			// $A36: Contrast Control
 
 	{ 0 },		// Byte											___filler40[0xB00-0xA38];
@@ -260,7 +257,6 @@ EmRegsEZ::EmRegsEZ (void) :
 	fKeyBits (0),
 	fLastTmr1Status (0),
 	fPortDEdge (0),
-	fPortDDataCount (0),
 	fHour (0),
 	fMin (0),
 	fSec (0),
@@ -309,10 +305,9 @@ void EmRegsEZ::Reset (Bool hardwareReset)
 		Canonical (f68EZ328Regs);
 		ByteswapWords (&f68EZ328Regs, sizeof(f68EZ328Regs));
 
-		fKeyBits		= 0;
-		fLastTmr1Status	= 0;
-		fPortDEdge		= 0;
-		fPortDDataCount	= 0;
+		fKeyBits = 0;
+		fLastTmr1Status = 0;
+		fPortDEdge = 0;
 
 		// React to the new data in the UART registers.
 
@@ -335,7 +330,7 @@ void EmRegsEZ::Save (SessionFile& f)
 	f.WriteHwrDBallEZType (f68EZ328Regs);
 	f.FixBug (SessionFile::kBugByteswappedStructs);
 
-	const long	kCurrentVersion = 3;
+	const long	kCurrentVersion = 2;
 
 	Chunk			chunk;
 	EmStreamChunk	s (chunk);
@@ -355,10 +350,6 @@ void EmRegsEZ::Save (SessionFile& f)
 	s << fSec;
 	s << fTick;
 	s << fCycle;
-
-	// Added in version 3.
-
-	s << fPortDDataCount;
 
 	f.WriteDBallEZState (chunk);
 }
@@ -428,11 +419,6 @@ void EmRegsEZ::Load (SessionFile& f)
 			s >> fSec;
 			s >> fTick;
 			s >> fCycle;
-		}
-
-		if (version >= 3)
-		{
-			s >> fPortDDataCount;
 		}
 	}
 	else
@@ -941,65 +927,13 @@ void EmRegsEZ::GetLCDScanlines (EmScreenUpdateInfo& info)
 	info.fFirstLine		= (info.fScreenLow - baseAddr) / rowBytes;
 	info.fLastLine		= (info.fScreenHigh - baseAddr - 1) / rowBytes + 1;
 
-	emuptr firstLineAddr = baseAddr + (info.fFirstLine * rowBytes);
-	emuptr lastLineAddr  = baseAddr + (info.fLastLine  * rowBytes);
+	long	firstLineOffset	= info.fFirstLine * rowBytes;
+	long	lastLineOffset	= info.fLastLine * rowBytes;
 
-	// TODO: probably move to <M68EZ328Hwr.h>
-	const long hwrEZ328LcdPageSize = 0x00020000; // 128K
-	const long hwrEZ328LcdPageMask = 0xFFFE0000;
-
-	uint8* dst = ((uint8*) info.fImage.GetBits () + firstLineAddr - baseAddr);
-	emuptr boundaryAddr = ((baseAddr & hwrEZ328LcdPageMask) + hwrEZ328LcdPageSize);
-
-	if (lastLineAddr <= boundaryAddr)
-	{
-		// Bits don't cross the 128K boundary
-	}
-	else if (firstLineAddr >= boundaryAddr)
-	{
-		// Bits are all beyond the 128K boundary
-
-		firstLineAddr -= hwrEZ328LcdPageSize; // wrap around
-		lastLineAddr  -= hwrEZ328LcdPageSize;
-	}
-	else
-	{
-		// Bits straddle the 128K boundary;
-		// copy the first part here, the wrapped part below
-
-		EmMem_memcpy ((void*) dst, firstLineAddr, boundaryAddr - firstLineAddr);
-		dst += (boundaryAddr - firstLineAddr);
-
-		firstLineAddr = boundaryAddr - hwrEZ328LcdPageSize;
-		lastLineAddr -= hwrEZ328LcdPageSize; // wrap around
-	}
-
-	EmMem_memcpy ((void*) dst, firstLineAddr, lastLineAddr - firstLineAddr);
-}
-
-
-// ---------------------------------------------------------------------------
-//		¥ EmRegsEZ::GetUARTDevice
-// ---------------------------------------------------------------------------
-// Return what sort of device is hooked up to the given UART.
-
-EmUARTDeviceType EmRegsEZ::GetUARTDevice (int /*uartNum*/)
-{
-	Bool	serEnabled	= this->GetLineDriverState (kUARTSerial);
-	Bool	irEnabled	= this->GetLineDriverState (kUARTIR);
-
-	// It's probably an error to have them both enabled at the same
-	// time.  !!! TBD: make this an error message.
-
-	EmAssert (!(serEnabled && irEnabled));
-
-	if (serEnabled)
-		return kUARTSerial;
-
-	if (irEnabled)
-		return kUARTIR;
-
-	return kUARTNone;
+	uae_memcpy (
+		(void*) ((uint8*) info.fImage.GetBits () + firstLineOffset),
+		baseAddr + firstLineOffset,
+		lastLineOffset - firstLineOffset);
 }
 
 
@@ -1275,6 +1209,19 @@ void EmRegsEZ::PortDataChanged (int port, uint8, uint8 newValue)
 
 
 // ---------------------------------------------------------------------------
+//		¥ EmRegsEZ::LineDriverChanged
+// ---------------------------------------------------------------------------
+// Tell the UART manager for the given UART that the host transport needs to
+// be opened or closed.
+
+void EmRegsEZ::LineDriverChanged (int /*uartNum*/)
+{
+	EmAssert (fUART);
+	fUART->LineDriverChanged ();
+}
+
+
+// ---------------------------------------------------------------------------
 //		¥ EmRegsEZ::pllFreqSelRead
 // ---------------------------------------------------------------------------
 
@@ -1320,18 +1267,6 @@ uint32 EmRegsEZ::portXDataRead (emuptr address, int)
 	if (port == 'D')
 	{
 		sel |= 0x0F;		// No "select" bit in low nybble, so set for IO values.
-
-		// The system will poll portD 18 times in KeyBootKeys to see
-		// if any keys are down.  Wait at least that long before
-		// letting up any boot keys maintained by the session.  When we
-		// do call ReleaseBootKeys, set our counter to -1 as a flag not
-		// to call it any more.
-
-		if (fPortDDataCount != 0xFFFFFFFF && ++fPortDDataCount >= 18 * 2)
-		{
-			fPortDDataCount = 0xFFFFFFFF;
-			gSession->ReleaseBootKeys ();
-		}
 	}
 
 	// Use the internal chip function bits if the "sel" bits are zero.
@@ -1640,10 +1575,10 @@ void EmRegsEZ::portXDataWrite (emuptr address, int size, uint32 value)
 
 	uint8	oldValue = StdRead (address, size);
 
-	// Take a snapshot of the line driver states.
-
-	Bool	driverStates[kUARTEnd];
-	EmHAL::GetLineDriverStates (driverStates);
+	Bool	backlightWasOn	= EmHAL::GetLCDBacklightOn ();
+	Bool	lcdWasOn		= EmHAL::GetLCDScreenOn ();
+	Bool	irWasOn			= EmHAL::GetIRPortOn (0);
+	Bool	serialWasOn		= EmHAL::GetSerialPortOn (0);
 
 	// Now update the value with a standard write.
 
@@ -1657,9 +1592,21 @@ void EmRegsEZ::portXDataWrite (emuptr address, int size, uint32 value)
 
 	EmHAL::PortDataChanged (port, oldValue, value);
 
-	// Respond to any changes in the line driver states.
+	Bool	backlightIsOn	= EmHAL::GetLCDBacklightOn ();
+	Bool	lcdIsOn			= EmHAL::GetLCDScreenOn ();
+	Bool	irIsOn			= EmHAL::GetIRPortOn (0);
+	Bool	serialIsOn		= EmHAL::GetSerialPortOn (0);
 
-	EmHAL::CompareLineDriverStates (driverStates);
+	if (backlightWasOn != backlightIsOn ||
+		lcdWasOn != lcdIsOn)
+	{
+		EmScreen::InvalidateAll ();
+	}
+
+	if (serialWasOn != serialIsOn || irWasOn != irIsOn)
+	{
+		EmHAL::LineDriverChanged (0);
+	}
 }
 
 
@@ -2375,13 +2322,20 @@ void EmRegsEZ::UpdateUARTState (Bool refreshRxData)
 
 void EmRegsEZ::UpdateUARTInterrupts (const EmUARTDragonball::State& state)
 {
-	// Generate the appropriate interrupts.
+	// Generate the appropriate interrupts.  Don't generate interrupts for
+	// TX_FIFO_EMPTY and TX_FIFO_HALF; from the manual's overview: "The transmitter
+	// will not generate another interrupt until the FIFO has completely emptied."
+	//
+	// Actually, this code is not quite right.  If TX_AVAIL_ENABLE is false but one
+	// of the other TX_xxx_ENABLEs is true, then we want to generate an interrupt
+	// for one of those.  With the test below, that will never happen.  For now,
+	// this is OK, as the Palm OS doesn't enable any of the TX interrupts.
 
 	if (state.RX_FULL_ENABLE	&& state.RX_FIFO_FULL	||
 		state.RX_HALF_ENABLE	&& state.RX_FIFO_HALF	||
 		state.RX_RDY_ENABLE		&& state.DATA_READY		||
-		state.TX_EMPTY_ENABLE	&& state.TX_FIFO_EMPTY	||
-		state.TX_HALF_ENABLE	&& state.TX_FIFO_HALF	||
+	//	state.TX_EMPTY_ENABLE	&& state.TX_FIFO_EMPTY	||
+	//	state.TX_HALF_ENABLE	&& state.TX_FIFO_HALF	||
 		state.TX_AVAIL_ENABLE	&& state.TX_AVAIL)
 	{
 		// Set the UART interrupt.

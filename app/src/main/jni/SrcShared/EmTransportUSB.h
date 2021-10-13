@@ -45,7 +45,6 @@ class EmTransportUSB : public EmTransport
 
 	public:
 								EmTransportUSB			(void);
-								EmTransportUSB			(const EmTransportDescriptor&);
 								EmTransportUSB			(const ConfigUSB&);
 		virtual					~EmTransportUSB			(void);
 
@@ -57,19 +56,15 @@ class EmTransportUSB : public EmTransport
 
 		virtual Bool			CanRead					(void);
 		virtual Bool			CanWrite				(void);
-		virtual long			BytesInBuffer			(long minBytes);
-		virtual string			GetSpecificName			(void);
+		virtual long			BytesInBuffer			(void);
 
 		ErrCode					SetConfig				(const ConfigUSB&);
 		void					GetConfig				(ConfigUSB&);
 
 		static EmTransportUSB*	GetTransport			(const ConfigUSB&);
-
-		static void				GetDescriptorList		(EmTransportDescriptorList&);
+		static void				GetPortNameList			(PortNameList&);
 
 	private:
-		static Bool				HostHasUSB				(void);
-
 		void					HostConstruct			(void);
 		void					HostDestruct			(void);
 
@@ -81,7 +76,7 @@ class EmTransportUSB : public EmTransport
 
 		Bool					HostCanRead				(void);
 		Bool					HostCanWrite			(void);
-		long					HostBytesInBuffer		(long minBytes);
+		long					HostBytesInBuffer		(void);
 
 		ErrCode					HostSetConfig			(const ConfigUSB&);
 

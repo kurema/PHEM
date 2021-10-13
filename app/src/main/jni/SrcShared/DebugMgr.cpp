@@ -24,8 +24,6 @@
 #include "EmHAL.h"				// EmHAL
 #include "EmLowMem.h"			// LowMem_SetGlobal, LowMem_GetGlobal
 #include "EmMemory.h"			// CEnableFullAccess
-#include "EmPalmFunction.h"		// SysTrapIndex, IsSystemTrap
-#include "EmPatchState.h"		// EmPatchState::UIInitialized
 #include "EmSession.h"			// EmSessionStopper, SuspendByDebugger
 #include "ErrorHandling.h"		// ReportUnhandledException
 #include "Logging.h"			// gErrLog
@@ -37,10 +35,8 @@
 #include "SocketMessaging.h"	// CSocket::Write
 #include "Strings.r.h"			// kStr_ values
 #include "SystemPacket.h"		// SystemPacket::
-#include "UAE.h"				// m68k_areg, m68k_dreg, etc.
-
-#include "ctype.h"				// isspace, isdigit, isxdigit
-
+#include "TrapPatches.h"		// RemoveAllTailpatches, InstallAllTailpatches
+#include "UAE_Utils.h"			// uae_memcpy
 
 #define PRINTF	if (!LogHLDebugger ()) ; else LogAppendMsg
 
@@ -1170,7 +1166,7 @@ Bool Debug::HandleSystemCall (const SystemCallContext& context)
 //			Normal processing.
 //
 //	The debugger is silently entered if reason == kException_Trace.
-//	Otherwise, it displays a message saying what exception occurred.
+//	Otherwise, it displays a message saying what exception occured.
 
 ErrCode Debug::EnterDebugger (ExceptionNumber reason, SLP* slp)
 {
@@ -1652,16 +1648,16 @@ Bool Debug::BreakpointInstalled (void)
 
 Bool Debug::MustBreakOnTrapSystemCall (uint16 trapWord, uint16 refNum)
 {
-	Bool	doBreak		= false;
-	uint16	trapIndex	= ::SysTrapIndex (trapWord);
+	Bool	doBreak = false;
+	uint16	trapIndex = SysTrapIndex (trapWord);
 
 	// Do different compares for system traps and library traps.
 
-	if (::IsSystemTrap (trapWord))
+	if (IsSystemTrap (trapWord))
 	{
 		for (int ii = 0; ii < dbgTotalTrapBreaks; ++ii)
 		{
-			if (trapIndex == ::SysTrapIndex (gDebuggerGlobals.trapBreak[ii]))
+			if (trapIndex == gDebuggerGlobals.trapBreak[ii])
 			{
 				doBreak = true;
 				break;
@@ -1672,7 +1668,7 @@ Bool Debug::MustBreakOnTrapSystemCall (uint16 trapWord, uint16 refNum)
 	{
 		for (int ii = 0; ii < dbgTotalTrapBreaks; ++ii)
 		{
-			if (trapIndex == ::SysTrapIndex (gDebuggerGlobals.trapBreak[ii]) &&
+			if (trapIndex == gDebuggerGlobals.trapBreak[ii] &&
 				refNum == gDebuggerGlobals.trapParam[ii])
 			{
 				doBreak = true;
@@ -2049,7 +2045,7 @@ void Debug::EventCallback (CSocket* s, int event)
 			// existance of this feature causes programs written the the prc tools
 			// to enter the debugger  when they're launched.
 
-			if (EmPatchState::UIInitialized ())
+			if (Patches::UIInitialized ())
 			{
 				EmSessionStopper	stopper (gSession, kStopOnSysCall);
 				if (stopper.Stopped ())
@@ -2079,7 +2075,7 @@ void Debug::EventCallback (CSocket* s, int event)
 
 			Debug::CreateListeningSockets ();
 
-			if (EmPatchState::UIInitialized ())
+			if (Patches::UIInitialized ())
 			{
 				EmSessionStopper	stopper (gSession, kStopOnSysCall);
 				if (stopper.Stopped ())

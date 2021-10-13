@@ -19,9 +19,6 @@
 #endif
 
 
-struct regstruct;
-
-
 /*
 **	--------------------------------------------------------------------------------
 **		Byte swapping
@@ -127,11 +124,32 @@ inline void Byteswap(T*& v)
 	Byteswap ((uint32&) v);
 }
 
+inline void Byteswap(WinHandle& v)
+{
+	Byteswap ((uint32&) v);
+}
+
+struct regstruct;
+
+void Byteswap (EventType& event);
+void Byteswap (FieldAttrType& p);
 void Byteswap (HwrM68328Type&);
 void Byteswap (HwrM68EZ328Type&);
 void Byteswap (HwrM68VZ328Type&);
+void Byteswap (PenBtnInfoType& p);
+void Byteswap (PointType& p);
+void Byteswap (RectangleType& p);
+void Byteswap (SndCommandType& cmd);
+void Byteswap (SysKernelInfoType& p);
+void Byteswap (SysNVParamsType& p);
+
 void Byteswap (regstruct& r);
+
 void Byteswap (SED1375RegsType& p);
+
+#ifdef SONY_ROM
+void Byteswap (DateTimeType& p);
+#endif
 
 #if BYTESWAP
 

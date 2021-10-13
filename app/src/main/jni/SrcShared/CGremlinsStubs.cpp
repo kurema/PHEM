@@ -24,21 +24,9 @@
 // This is a stub routine that called the application object's method that
 // enqueues a point.
 
-void	StubAppEnqueuePt(const PointType* pen)
+void	StubAppEnqueuePt(PointType* pen)
 {
-	// Make a copy of the point, as we may be munging it.
-
-	PointType	pt = *pen;
-
-	// Enqueue the new pen position. We must "reverse" correct it because the
-	// Event Manager assumes that all points enqueued are raw digitizer points.
-
-	if (pt.x != -1 || pt.y != -1)
-	{
-		(void) ::PenScreenToRaw(&pt);
-	}
-
-	::EvtEnqueuePenPoint(&pt);
+	::EvtEnqueuePenPoint(pen);
 }
 
 

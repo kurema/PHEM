@@ -46,7 +46,18 @@ enum SkinElementType
 
 	kElement_Touchscreen,
 	kElement_LCD,
-	kElement_LED,
+
+#ifdef SONY_ROM
+	// Sony custom button
+	kElement_JogPush,				// for Sony & JogDial
+	kElement_JogRelease,			// for Sony & JogDial
+	kElement_JogRepeat,				// for Sony & JogDial
+	kElement_JogUp,					// for Sony & JogDial
+	kElement_JogDown,				// for Sony & JogDial
+	kElement_JogESC,				// for Sony & JogDial
+	kElement_MS_InOut,				// for Sony & MemoryStick
+	kElement_AlermLED,				// for Sony & AlermLED
+#endif
 
 	kElement_NumElements,
 
@@ -54,7 +65,29 @@ enum SkinElementType
 	kElement_None	= -2
 };
 
-DEFINE_SCALAR_MODIFIERS (SkinElementType)
+	// Pre-increment operator
+inline void	operator++(SkinElementType& x)
+{
+	x = SkinElementType (x + 1);
+}
+
+	// Post-increment operator
+inline void	operator++(SkinElementType& x, int)
+{
+	x = SkinElementType (x + 1);
+}
+
+	// Pre-decrement operator
+inline void	operator--(SkinElementType& x)
+{
+	x = SkinElementType (x - 1);
+}
+
+	// Post-decrement operator
+inline void	operator--(SkinElementType& x, int)
+{
+	x = SkinElementType (x - 1);
+}
 
 
 typedef string				SkinName;
@@ -91,5 +124,10 @@ EmRect			SkinScaleDown			(const EmRect&);
 
 EmPoint			SkinScaleUp				(const EmPoint&);
 EmRect			SkinScaleUp				(const EmRect&);
+
+#ifdef SONY_ROM
+Bool			SkinGetElementRect		(SkinElementType which, RECT *lprc);
+Bool			SkinGetElementEmRect	(SkinElementType which, EmRect *lprc);
+#endif
 
 #endif	// _SKINS_H_

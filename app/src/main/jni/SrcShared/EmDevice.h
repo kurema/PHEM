@@ -19,12 +19,12 @@
 #include <string>				// string
 
 class EmCPU;
-class EmFileRef;
 class EmRegs;
 class EmSession;
 struct DeviceInfo;
 
-class EmROMReader;
+class LAS;
+template <class A> class EmROMReader;
 
 class EmDevice;
 typedef vector<EmDevice>	EmDeviceList;
@@ -53,8 +53,7 @@ class EmDevice
 		Bool					PrismPlatinumEdgeHack	(void) const;
 		Bool					EdgeHack				(void) const;
 
-		Bool					SupportsROM			(const EmFileRef&) const;
-		Bool					SupportsROM			(const EmROMReader&) const;
+		Bool					SupportsROM			(const EmROMReader<LAS>& ROM) const;
 
 		EmCPU*					CreateCPU			(EmSession*) const;
 		void					CreateRegs			(void) const;
@@ -73,12 +72,62 @@ class EmDevice
 	public:
 		static EmDeviceList		GetDeviceList		(void);
 
+#ifdef SONY_ROM
+		int						GetDeviceType		(void) const { return fDeviceID; };
+#endif
+
 	private:
 								EmDevice			(int);
 		const DeviceInfo*		GetDeviceInfo		(void) const;
+		int						fDeviceID;
+
 		int						GetDeviceID			(const char*) const;
 
-		int						fDeviceID;
 };
+
+enum	// DeviceType
+{
+	kDeviceUnspecified	= 0,
+	kDevicePilot,
+	kDevicePalmPilot,
+	kDevicePalmIII,
+	kDevicePalmIIIc,
+	kDevicePalmIIIe,
+	kDevicePalmIIIx,
+	kDevicePalmV,
+	kDevicePalmVx,
+	kDevicePalmVII,
+	kDevicePalmVIIEZ,
+	kDevicePalmVIIx,
+	kDevicePalmM100,
+	kDevicePalmM500,
+	kDevicePalmM505,
+	kDeviceARMRef,
+	kDeviceSymbol1500,
+	kDeviceSymbol1700,
+	kDeviceSymbol1740,
+	kDeviceTRGpro,
+	kDeviceVisor,
+	kDeviceVisorPrism,
+	kDeviceVisorPlatinum,
+	kDeviceVisorEdge,
+
+#ifdef SONY_ROM
+	kDevicePEGS500C,
+	kDevicePEGS300,
+	kDevicePEGN700C,
+	kDevicePEGS320,
+	kDevicePEGS360,
+	kDevicePEGN600C,
+	kDevicePEGT400,
+	kDevicePEGT600,
+#endif
+
+	kDeviceLast
+};
+
+#ifdef	SONY_ROM
+#include	"SonyShared\SonyDevice.h"
+#endif
 
 #endif	/* EmDevice_h */

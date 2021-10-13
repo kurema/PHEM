@@ -8,10 +8,7 @@
 #include "EmCommon.h"
 #include "EmStream.h"
 
-#include "Byteswapping.h"		// Canonical
-
-/* Update for GCC 4 */
-#include <string.h>
+// const	int32	length_NilBlock = -1;
 
 #pragma mark --- Construction & Destruction ---
 
@@ -35,7 +32,6 @@ EmStream::EmStream (void) :
 EmStream::~EmStream (void)
 {
 }
-
 
 #pragma mark --- Accessors ---
 
@@ -152,101 +148,6 @@ EmStream::PutBytes (
 }
 
 
-EmStream&
-EmStream::operator <<		(const char* inString)
-{
-	WriteCString (inString);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(const string& inString)
-{
-	WriteString (inString);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(int8 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(uint8 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(char inChar)
-{
-	Canonical (inChar);
-	PutBytes (&inChar, sizeof (inChar));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(int16 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(uint16 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(int32 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(uint32 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(int64 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(uint64 inNum)
-{
-	Canonical (inNum);
-	PutBytes (&inNum, sizeof (inNum));
-	return (*this);
-}
-
-EmStream&
-EmStream::operator <<		(bool inBool)
-{
-	Canonical (inBool);
-	PutBytes (&inBool, sizeof (inBool));
-	return (*this);
-}
-
-		
 // ---------------------------------------------------------------------------
 //	¥ GetBytes
 // ---------------------------------------------------------------------------
@@ -293,101 +194,6 @@ EmStream::PeekData (
 
 	return bytesToPeek;
 }
-
-EmStream&
-EmStream::operator >>		(char* outString)
-{
-	ReadCString (outString);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(string& outString)
-{
-	ReadString (outString);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(int8 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(uint8 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(char &outChar)
-{
-	GetBytes (&outChar, sizeof (outChar));
-	Canonical (outChar);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(int16 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(uint16 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(int32 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(uint32 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(int64 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(uint64 &outNum)
-{
-	GetBytes (&outNum, sizeof (outNum));
-	Canonical (outNum);
-	return (*this);
-}
-
-EmStream&
-EmStream::operator >>		(bool &outBool)
-{
-	GetBytes (&outBool, sizeof (outBool));
-	Canonical (outBool);
-	return (*this);
-}
-
 
 #pragma mark --- High-Level I/O ---
 

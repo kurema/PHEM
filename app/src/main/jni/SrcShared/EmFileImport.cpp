@@ -20,7 +20,6 @@
 #include "EmExgMgr.h"			// EmExgMgrStream, EmExgMgrImport
 #include "EmLowMem.h"			// TrapExists
 #include "EmPalmStructs.h"		// SysLibTblEntryType, RecordEntryType, RsrcEntryType, etc.
-#include "EmPatchState.h"		// EmPatchState::AutoAcceptBeamDialogs
 #include "EmSession.h"			// ExecuteUntilIdle, gSession
 #include "EmStreamFile.h"		// EmStreamFile, kOpenExistingForRead
 #include "ErrorHandling.h"		// Errors::SetParameter
@@ -29,12 +28,8 @@
 #include "ROMStubs.h"			// ExgLibControl, DmFindDatabase, EvtEnqueueKey, EvtWakeup, DmDeleteDatabase, DmCreateDatabase...
 #include "Strings.r.h"			// kStr_CmdInstall
 
-#include "PHEMNativeIF.h"
-
 #include <algorithm>			// find
 #include <stdio.h>				// sprintf
-#include <time.h>				// strftime
-
 
 /*
 	This module is responsible for installing files containing Palm OS
@@ -96,7 +91,7 @@ extern const int	kHostExgLibSize;
 static Bool		PrvDetermineMethod	(EmFileImportMethod method);
 static Bool		PrvCanUseExgMgr		(void);
 static Bool		PrvHasExgMgr		(void);
-//static Bool		PrvHostExgLibLoaded	(void);
+static Bool		PrvHostExgLibLoaded	(void);
 static Bool		PrvIsResources		(UInt16 attributes);
 static Bool		PrvIsResources		(const EmAliasDatabaseHdrType<LAS>& hdr);
 static UInt32	PrvGetEntrySize		(const EmAliasDatabaseHdrType<LAS>& hdr);
@@ -133,7 +128,7 @@ EmFileImport::EmFileImport	(EmStream& stream, EmFileImportMethod method) :
 
 	fExgMgrStream (NULL),
 	fExgMgrImport (NULL),
-	fOldAcceptBeamState (EmPatchState::AutoAcceptBeamDialogs (true)),
+	fOldAcceptBeamState (Patches::AutoAcceptBeamDialogs (true)),
 
 	fFileBuffer (NULL),
 	fFileBufferSize (0),
@@ -166,7 +161,7 @@ EmFileImport::~EmFileImport	(void)
 
 	Platform::DisposeMemory (fFileBuffer);
 
-	EmPatchState::AutoAcceptBeamDialogs (fOldAcceptBeamState);
+	Patches::AutoAcceptBeamDialogs (fOldAcceptBeamState);
 }
 
 
@@ -185,8 +180,7 @@ EmFileImport::~EmFileImport	(void)
  ***********************************************************************/
 
 ErrCode EmFileImport::LoadPalmFile (const void* data, uint32 size,
-									EmFileImportMethod method,
-									LocalID &newID)
+										EmFileImportMethod method)
 {
 	ErrCode			err = errNone;
 	EmStreamBlock	stream ((void*) data, size);
@@ -196,8 +190,6 @@ ErrCode EmFileImport::LoadPalmFile (const void* data, uint32 size,
 	{
 		err = importer.Continue ();
 	}
-
-	newID = importer.GetLocalID ();
 
 	return err;
 }
@@ -217,37 +209,24 @@ ErrCode EmFileImport::LoadPalmFile (const void* data, uint32 size,
  ***********************************************************************/
 
 ErrCode EmFileImport::LoadPalmFileList (const EmFileRefList& fileList,
-										EmFileImportMethod method,
-										vector<LocalID>& newIDList)
+										EmFileImportMethod method)
 {
 	ErrCode	err = errNone;
 
-	newIDList.clear ();
-
-        PHEM_Log_Msg("LoadPalmFileList starting.");
 	EmFileRefList::const_iterator	iter = fileList.begin ();
-        PHEM_Log_Msg("Starting loop.");
 	while (iter != fileList.end ())
 	{
-                PHEM_Log_Msg("Getting stream.");
 		EmStreamFile	stream (*iter, kOpenExistingForRead);
-                PHEM_Log_Msg("Creating importer.");
 		EmFileImport	importer (stream, method);
 
 		while (!importer.Done () && err == errNone)
 		{
-                        PHEM_Log_Msg("Calling importer.Continue().");
 			err = importer.Continue ();
 		}
-
-                PHEM_Log_Msg("Pushing back new LocalID.");
-		newIDList.push_back (importer.GetLocalID ());
 
 		++iter;
 	}
 
-        PHEM_Log_Msg("Done, err =");
-        PHEM_Log_Place(err);
 	return err;
 }
 
@@ -282,7 +261,7 @@ ErrCode EmFileImport::InstallExgMgrLib (void)
 
 	// OK to install it.
 
-	return EmFileImport::LoadPalmFile (kHostExgLib, kHostExgLibSize, kMethodHomebrew, id);
+	return EmFileImport::LoadPalmFile (kHostExgLib, kHostExgLibSize, kMethodHomebrew);
 }
 
 
@@ -416,33 +395,6 @@ long EmFileImport::GetProgress (void)
 	else
 	{
 		return fCurrentEntry;
-	}
-}
-
-
-/***********************************************************************
- *
- * FUNCTION:	EmFileImport::GetLocalID
- *
- * DESCRIPTION:	Return the LocalID of the database we just installed.
- *              This is only valid when the importer is "Done".
- *
- * PARAMETERS:	None.
- *
- * RETURNED:	-1 if no database has been installed, otherwise a valid
- *				LocalID.
- *
- ***********************************************************************/
-
-LocalID EmFileImport::GetLocalID (void)
-{
-	if (fUsingExgMgr)
-	{
-		return 0;
-	}
-	else
-	{
-		return fDBID;
 	}
 }
 
@@ -772,7 +724,7 @@ void EmFileImport::HomeBrewInstallStart (void)
 	fDBID = ::DmFindDatabase (fCardNo, (Char*) hdr.name.GetPtr ());
 	if (!fDBID)
 	{
-		err = ::DmGetLastErr ();
+		err = dmErrCantFind;
 		goto Error;
 	}
 
@@ -801,7 +753,7 @@ void EmFileImport::HomeBrewInstallStart (void)
 	fOpenID = ::DmOpenDatabase (fCardNo, fDBID, dmModeReadWrite);
 	if (!fOpenID)
 	{
-		err = ::DmGetLastErr ();
+		err = dmErrCantOpen;
 		goto Error;
 	}
 
@@ -838,7 +790,7 @@ void EmFileImport::HomeBrewInstallStart (void)
 			newRecH = (MemHandle) ::DmNewHandle (fOpenID, recSize);
 			if (!newRecH)
 			{
-				err = ::DmGetLastErr ();
+				err = DmGetLastErr ();
 				goto Error;
 			}
 
@@ -939,13 +891,7 @@ void EmFileImport::HomeBrewInstallMiddle (void)
 		newResH = (MemHandle) ::DmNewResource (fOpenID, rsrcEntry.type, rsrcEntry.id, resSize);
 		if (!newResH)
 		{
-			err = ::DmGetLastErr ();
-			if (err == dmErrMemError)
-			{
-				this->DeleteCurrentDatabase ();
-				this->SetResult (kError_BadDB_ResourceMemError);
-				return;
-			}
+			err = DmGetLastErr ();
 			goto Error;
 		}
 
@@ -1004,13 +950,7 @@ void EmFileImport::HomeBrewInstallMiddle (void)
 			newRecH = (MemHandle) ::DmNewRecord (fOpenID, &index, recSize);
 			if (!newRecH)
 			{
-				err = ::DmGetLastErr ();
-				if (err == dmErrMemError)
-				{
-					this->DeleteCurrentDatabase ();
-					this->SetResult (kError_BadDB_RecordMemError);
-					return;
-				}
+				err = DmGetLastErr ();
 				goto Error;
 			}
 
@@ -1091,7 +1031,7 @@ void EmFileImport::HomeBrewInstallEnd (void)
 	::DmCloseDatabase (fOpenID);
 
 	fOpenID = 0;
-//	fDBID = 0;	// Don't zap this, we return it in GetLocalID.
+	fDBID = 0;
 
 	fState = kInstallDone;
 }
@@ -1304,7 +1244,6 @@ Bool PrvHasExgMgr (void)
  *
  ***********************************************************************/
 
-#if 0
 Bool PrvHostExgLibLoaded (void)
 {
 	// Try finding the library.
@@ -1323,7 +1262,6 @@ Bool PrvHostExgLibLoaded (void)
 
 	return false;
 }
-#endif
 
 
 /***********************************************************************
@@ -1450,9 +1388,7 @@ static ErrCode PrvValidateDatabaseHeader(const EmAliasDatabaseHdrType<LAS>& hdr,
 
 	for (size_t ii = 0; ii < len; ++ii)
 	{
-		uint8	ch = (uint8) namePtr[ii];
-
-		if (ch < ' ' || ch > 0x7E)
+		if (namePtr[ii] < ' ')
 		{
 			Errors::SetParameter ("%database_name", namePtr);
 			return kError_BadDB_NameNotPrintable;
@@ -1470,8 +1406,7 @@ static ErrCode PrvValidateDatabaseHeader(const EmAliasDatabaseHdrType<LAS>& hdr,
 		// Just show the problem here, but don't consider it fatal.
 		::PrvSetDate ("%cr_date", hdr.creationDate);
 		::PrvSetDate ("%mod_date", hdr.modificationDate);
-		Errors::SetParameter ("%database_name", namePtr);
-		string	msg = Errors::ReplaceParameters (kStr_InconsistentDatabaseDates);
+		string	msg = Errors::ReplaceParameters (kStr_InconsistantDatabaseDates);
 		EmDlg::DoCommonDialog (msg, kDlgFlags_OK);
 	}
 
@@ -1481,7 +1416,6 @@ static ErrCode PrvValidateDatabaseHeader(const EmAliasDatabaseHdrType<LAS>& hdr,
 	else if (creationDate == 0)
 	{
 		// Just show the problem here, but don't consider it fatal.
-		Errors::SetParameter ("%database_name", namePtr);
 		string	msg = Errors::ReplaceParameters (kStr_NULLDatabaseDate);
 		EmDlg::DoCommonDialog (msg, kDlgFlags_OK);
 	}
@@ -1543,6 +1477,10 @@ static ErrCode PrvValidateEntries(const EmAliasDatabaseHdrType<LAS>& hdr, UInt32
 		LocalID 	itsLocalID;
 		long		itsSize;	// Use a signed value to detect decreasing LocalIDs
 
+		// Set the error parameters in case an error occurs.
+
+		Errors::SetParameter ("%record_number", recordNumber);
+
 		// Check for negative sizes and get the LocalID.
 		// ---------------------------------------------
 		// Though the code is similar for resources and for records, we have separate
@@ -1590,10 +1528,6 @@ static ErrCode PrvValidateEntries(const EmAliasDatabaseHdrType<LAS>& hdr, UInt32
 		else
 		{
 			EmAliasRecordEntryType<LAS> recordEntry (hdr.recordList.records[recordNumber]);
-
-			// Set the error parameters in case an error occurs.
-
-			Errors::SetParameter ("%record_number", recordNumber);
 
 			if (recordNumber < hdr.recordList.numRecords - 1)
 			{
@@ -1770,7 +1704,7 @@ void PrvSetExgMgr (void* mgr)
 		if (tblP)
 		{
 			EmAliasSysLibTblEntryType<PAS>	tbl (tblP);
-			tbl.globalsP = (emuptr) mgr;
+			tbl.globalsP = mgr;
 		}
 	}
 }

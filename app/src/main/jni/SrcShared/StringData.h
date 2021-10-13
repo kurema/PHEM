@@ -16,10 +16,5 @@
 
 extern const char*	kExceptionNames[];
 extern const char*  kPacketNames[];
-extern const char*  kVirtualKeyDescriptions[];
-extern const char*  kHardKeyDescriptions[];
-
-extern const size_t gVirtualKeyDescriptionsCount;
-extern const size_t gHardKeyDescriptionsCount;
 
 #endif /* _STRINGDATA_H_ */

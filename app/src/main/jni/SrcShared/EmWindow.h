@@ -19,37 +19,7 @@
 #include "EmStructs.h"			// RGBList
 #include "PreferenceMgr.h"		// PrefKeyType
 
-/*
-	EmWindow is the cross-platform object representing the window that
-	displays the emulation.  It is not the actual thing that appears on
-	the monitor as a window, but merely deals with cross-platform
-	aspects of handling it, such as updating its contents, changing
-	skins, etc.
-
-	EmWindow handles all the cross-platform issues.  It can deal with
-	the upper-level parts of updating the LCD area, wiggling the window
-	if the vibrator is going, changing skins, etc.
-
-	EmWindow manages most of the platform-specific aspects by defining
-	HostFoo methods, which are then defined differently on each
-	platform.  These HostFoo methods are implemented in
-	EmWindow<Host>.cpp.
-
-	EmWindow<Host> is also defined in EmWindow<Host>.cpp, and holds any
-	platform-specific data (such as the HWND on Windows, etc.).  It
-	declares and implements any support functions needed on that
-	particular platform, but which can't be declared in EmWindow because
-	either not all platforms need those functions, or they involve
-	platform-specific types.
-
-	One creates a window by calling "window = new EmWindow<Host>;"
-	followed by "window->WindowInit();".  Cross-platform code can then
-	call high-level functions in EmWindow such as HandleUpdate and
-	HandlePen.  Platform-specific code can perform platform-specific
-	operations.  When it's time to close the window, call
-	"window->WindowDispose();" followed by "delete window;"
-*/
-
+class EmWindowHostData;
 class EmPoint;
 class EmScreenUpdateInfo;
 
@@ -57,22 +27,20 @@ class EmWindow
 {
 	public:
 								EmWindow			(void);
-		virtual					~EmWindow			(void);
+								~EmWindow			(void);
 
-		static EmWindow*		NewWindow			(void);
+		static EmWindow*		GetWindow			(void);
 
-		void					WindowInit			(void);
+		void					WindowCreate		(void);
+		void					WindowDispose		(void);
+
 		void					WindowReset			(void);
 
 		void					HandlePenEvent		(const EmPoint&, Bool down);
 		void					HandleUpdate		(void);
 		void 					HandlePalette		(void);
 		void					HandleDisplayChange	(void);
-		void					HandleActivate		(Bool active);
-		virtual void			HandleIdle			(void);
-
-		void					HandleDebugMode		(Bool debugMode);
-		void					HandleGremlinMode	(Bool gremlinMode);
+		void					HandleIdle			(const EmPoint&);
 
 		void					GetLCDContents		(EmScreenUpdateInfo& info);
 
@@ -93,66 +61,66 @@ class EmWindow
 		Bool					GetSkin				(EmPixMap&);
 		void					GetDefaultSkin		(EmPixMap&);
 
-	protected:
-		void					PreDestroy			(void);
+	private:
+		void					HostConstruct		(void);
+		void					HostDestruct		(void);
+
+		void					HostWindowCreate	(void);
+		void					HostWindowDispose	(void);
+
+		void					HostWindowReset		(void);
+
+		void					HostMouseCapture	(void);
+		void					HostMouseRelease	(void);
+
+		void					HostUpdateBegin		(void);
+		void					HostUpdateEnd		(void);
+
+		void					HostDrawingBegin	(void);
+		void					HostDrawingEnd		(void);
+
+		void					HostPaletteSet		(const EmScreenUpdateInfo&);
+		void					HostPaletteRestore	(void);
+
+		void					HostWindowMoveBy	(const EmPoint&);
+		void					HostWindowMoveTo	(const EmPoint&);
+		EmRect					HostWindowBoundsGet	(void);
+		void					HostWindowCenter	(void);
+		void					HostWindowShow		(void);
+		void					HostWindowDrag		(void);
+
+		void					HostRectFrame		(const EmRect&, const EmPoint&, const RGBType&);
+		void					HostOvalPaint		(const EmRect&, const RGBType&);
+
+		void					HostPaintCase		(const EmScreenUpdateInfo&);
+		void					HostPaintLCD		(const EmScreenUpdateInfo& info,
+													 const EmRect& srcRect,
+													 const EmRect& destRect,
+													 Bool scaled);
+
+		void					HostPalette			(void);
+		void					HostDisplayChange	(void);
+
+		void					HostGetDefaultSkin	(EmPixMap&, int scale);
+
+	public:
+		EmWindowHostData*		GetHostData			(void) { return fHostData; }
 		Bool					PrevLCDColorsChanged(const RGBList& newLCDColors);
 		void					SaveLCDColors		(const RGBList& newLCDColors);
 		void					GetSystemColors		(const EmScreenUpdateInfo&,
 													 RGBList&);
-		void					QuantizeSkinColors	(const EmPixMap& skin,
-													 RGBList& colors,
-													 Bool polite);
-
-		const EmPixMap&			GetCurrentSkin		(void);
-		const RGBList&			GetCurrentSkinColors(Bool polite);
-		const EmRegion&			GetCurrentSkinRegion(void);
+		EmRegion				GetSkinRegion		(void);
 
 	private:
-		virtual void			HostWindowReset		(void) = 0;
+		friend class EmWindowHostData;
 
-		virtual void			HostMouseCapture	(void);
-		virtual void			HostMouseRelease	(void);
-
-		virtual void			HostUpdateBegin		(void);
-		virtual void			HostUpdateEnd		(void);
-
-		virtual void			HostDrawingBegin	(void);
-		virtual void			HostDrawingEnd		(void);
-
-		virtual void			HostPaletteSet		(const EmScreenUpdateInfo&);
-		virtual void			HostPaletteRestore	(void);
-
-		virtual void			HostWindowMoveBy	(const EmPoint&) = 0;
-		virtual void			HostWindowMoveTo	(const EmPoint&) = 0;
-		virtual EmRect			HostWindowBoundsGet	(void) = 0;
-		virtual void			HostWindowCenter	(void) = 0;
-		virtual void			HostWindowShow		(void) = 0;
-		virtual void			HostWindowDrag		(void);
-		virtual void			HostWindowStayOnTop	(void);
-
-		virtual void			HostRectFrame		(const EmRect&, const EmPoint&, const RGBType&) = 0;
-		virtual void			HostOvalPaint		(const EmRect&, const RGBType&) = 0;
-
-		virtual void			HostPaintCase		(const EmScreenUpdateInfo&) = 0;
-		virtual void			HostPaintLCD		(const EmScreenUpdateInfo& info,
-													 const EmRect& srcRect,
-													 const EmRect& destRect,
-													 Bool scaled) = 0;
-
-		virtual void			HostPalette			(void);
-		virtual void			HostDisplayChange	(void);
-
-		virtual void			HostGetDefaultSkin	(EmPixMap&, int scale) = 0;
-		virtual EmPoint			HostGetCurrentMouse	(void) = 0;
-
-	private:
 		static EmWindow*		fgWindow;
 
-		EmPixMap				fSkinBase;
-		EmPixMap				fSkinCurrent;
+		EmWindowHostData*		fHostData;
 
-		RGBList					fSkinColors[16];
-
+		EmPixMap				fSkin;
+		RGBList					fSkinColors1;
+		RGBList					fSkinColors2;
 		EmRegion				fSkinRegion;
 
 		RGBList					fPrevLCDColors;
@@ -163,15 +131,9 @@ class EmWindow
 		Bool					fNeedWindowInvalidate;
 
 		Bool					fOldLCDOn;
-		Bool					fOldBacklightOn;
 		uint16					fOldLEDState;
 
 		Bool					fWiggled;
-		Bool					fActive;
-		Bool					fDebugMode;
-		Bool					fGremlinMode;
 };
-
-extern EmWindow*	gWindow;
 
 #endif	// EmWindow_h

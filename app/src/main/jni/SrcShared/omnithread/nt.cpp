@@ -408,7 +408,6 @@ omni_semaphore::post(void)
 
 int omni_thread::init_t::count = 0;
 
-omni_thread* omni_thread::root_thread;
 omni_mutex* omni_thread::next_id_mutex;
 int omni_thread::next_id = 0;
 static DWORD self_tls_index;
@@ -435,34 +434,25 @@ omni_thread::init_t::init_t(void)
     // Create object for this (i.e. initial) thread.
     //
 
-    root_thread = new omni_thread;
+    omni_thread* t = new omni_thread;
 
-    root_thread->_state = STATE_RUNNING;
+    t->_state = STATE_RUNNING;
 
     if (!DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-			 GetCurrentProcess(), &root_thread->handle,
+			 GetCurrentProcess(), &t->handle,
 			 0, FALSE, DUPLICATE_SAME_ACCESS))
 	throw omni_thread_fatal(GetLastError());
 
-    root_thread->nt_id = GetCurrentThreadId();
+    t->nt_id = GetCurrentThreadId();
 
-    DB(cerr << "initial thread " << root_thread->id() << " NT thread id " << root_thread->nt_id
+    DB(cerr << "initial thread " << t->id() << " NT thread id " << t->nt_id
        << endl);
 
-    if (!TlsSetValue(self_tls_index, (LPVOID) root_thread))
+    if (!TlsSetValue(self_tls_index, (LPVOID)t))
 	throw omni_thread_fatal(GetLastError());
 
-    if (!SetThreadPriority(root_thread->handle, nt_priority(PRIORITY_NORMAL)))
+    if (!SetThreadPriority(t->handle, nt_priority(PRIORITY_NORMAL)))
 	throw omni_thread_fatal(GetLastError());
-}
-
-omni_thread::init_t::~init_t (void)
-{
-    if (--count != 0)	// only do it once however many objects get created.
-	return;
-
-	delete root_thread;
-	delete next_id_mutex;
 }
 
 //

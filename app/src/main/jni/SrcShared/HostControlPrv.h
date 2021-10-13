@@ -14,9 +14,8 @@
 #ifndef _HOSTCONTROLPRV_H_
 #define _HOSTCONTROLPRV_H_
 
-#include "EmPatchIf.h"			// CallROMType
-
-class SessionFile;
+#include "TrapPatches.h"		// CallROMType
+#include "SessionFile.h"		// SessionFile
 
 CallROMType	HandleHostControlCall (void);
 

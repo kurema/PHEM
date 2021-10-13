@@ -18,7 +18,6 @@
 #include "EmStream.h"			// GetLength, GetBytes
 #include "Platform.h"			// Platform::DisposeMemory, AllocateMemory
 
-#include "PHEMNativeIF.h"
 
 /***********************************************************************
  *
@@ -716,25 +715,15 @@ EmJPEGDecompressPixMapSink::post_jpeg_read_header (j_decompress_ptr cinfo)
 
 	EmAssert (cinfo->out_color_space == JCS_RGB);
 
-        PHEM_Log_Msg("EmJPEGDecompressPixMapSink");
-        PHEM_Log_Place(cinfo->output_width);
-        PHEM_Log_Place(cinfo->output_height);
-
 	fPixMap.SetSize (EmPoint (cinfo->output_width, cinfo->output_height));
 	fPixMap.SetFormat (kPixMapFormat24RGB);
 
 	// Determine width of rows in the EmPixMap.
 
 	fDataWidth		= cinfo->output_width * cinfo->output_components;
-        PHEM_Log_Msg("fDataWidth:");
-        PHEM_Log_Place(fDataWidth);
 	fRowWidth		= fPixMap.GetRowBytes ();
-        PHEM_Log_Msg("fRowWidth:");
-        PHEM_Log_Place(fRowWidth);
 	fPadBytes		= fRowWidth - fDataWidth;
 
-        PHEM_Log_Msg("fPadBytes:");
-        PHEM_Log_Place(fPadBytes);
 	// Prepare for write pass
 
 	fCurOutputRow	= 0;

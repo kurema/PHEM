@@ -114,9 +114,6 @@ typedef struct DrawStateType {
 // The Window Structures.
 //-----------------------------------------------
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER еее╩-- need to add #defines for each bit for endian portableness
-#endif // PUBLIC_STUFF_STRIPPED
 typedef union FrameBitsType {
 	struct {
 		UInt16 cornerDiam		: 8;				// corner diameter, max 38
@@ -144,9 +141,6 @@ typedef UInt16 FrameType;
 
 #define winDefaultDepthFlag		0xFF
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER еее╩-- need to add #defines for each bit for endian portableness
-#endif // PUBLIC_STUFF_STRIPPED
 typedef struct WindowFlagsType {
 	UInt16 format:1;      // window format:  0=screen mode; 1=generic mode
 	UInt16 offscreen:1;   // offscreen flag: 0=onscreen ; 1=offscreen

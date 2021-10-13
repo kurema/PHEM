@@ -16,7 +16,330 @@
 
 #if BYTESWAP
 
+#include "EmRPC.h"				// sysPktRPC2Cmd
 #include "UAE.h"				// regstruct
+
+#if defined (_MSC_VER) || defined (__GNUC__)
+
+unsigned long	flipBits[] =
+{
+	/* 0000 -> 0000 */	0x00,
+	/* 0001 -> 1000 */	0x08,
+	/* 0010 -> 0100 */	0x04,
+	/* 0011 -> 1100 */	0x0C,
+	/* 0100 -> 0010 */	0x02,
+	/* 0101 -> 1010 */	0x0A,
+	/* 0110 -> 0110 */	0x06,
+	/* 0111 -> 1110 */	0x0E,
+	/* 1000 -> 0001 */	0x01,
+	/* 1001 -> 1001 */	0x09,
+	/* 1010 -> 0101 */	0x05,
+	/* 1011 -> 1101 */	0x0D,
+	/* 1100 -> 0011 */	0x03,
+	/* 1101 -> 1011 */	0x0B,
+	/* 1110 -> 0111 */	0x07,
+	/* 1111 -> 1111 */	0x0F
+};
+
+#endif
+
+void Byteswap (EventType& event)
+{
+	Byteswap (event.eType);
+	Byteswap (event.penDown);
+	Byteswap (event.screenX);
+	Byteswap (event.screenY);
+
+	switch(event.eType)
+	{
+		case nilEvent:
+			break;
+
+		case penDownEvent:
+			Byteswap (event.data.penUp.start);
+			Byteswap (event.data.penUp.end);
+			break;
+
+		case penUpEvent:
+			Byteswap (event.data.penUp.start);
+			Byteswap (event.data.penUp.end);
+			break;
+
+		case penMoveEvent:
+			Byteswap (event.data.penUp.start);
+			Byteswap (event.data.penUp.end);
+			break;
+
+		case keyDownEvent:
+			Byteswap (event.data.keyDown.chr);
+			Byteswap (event.data.keyDown.keyCode);
+			Byteswap (event.data.keyDown.modifiers);
+			break;
+
+		case winEnterEvent:
+			Byteswap (event.data.winEnter.enterWindow);
+			Byteswap (event.data.winEnter.exitWindow);
+			break;
+
+		case winExitEvent:
+			Byteswap (event.data.winExit.enterWindow);
+			Byteswap (event.data.winExit.exitWindow);
+			break;
+
+		case ctlEnterEvent:
+			Byteswap (event.data.ctlEnter.controlID);
+			Byteswap (event.data.ctlEnter.pControl);
+			break;
+
+		case ctlExitEvent:
+			break;
+
+		case ctlSelectEvent:
+			Byteswap (event.data.ctlSelect.controlID);
+			Byteswap (event.data.ctlSelect.pControl);
+			Byteswap (event.data.ctlSelect.on);
+			break;
+
+		case ctlRepeatEvent:
+			Byteswap (event.data.ctlRepeat.controlID);
+			Byteswap (event.data.ctlRepeat.pControl);
+			Byteswap (event.data.ctlRepeat.time);
+			break;
+
+		case lstEnterEvent:
+			Byteswap (event.data.lstEnter.listID);
+			Byteswap (event.data.lstEnter.pList);
+			Byteswap (event.data.lstEnter.selection);
+			break;
+
+		case lstSelectEvent:
+			Byteswap (event.data.lstSelect.listID);
+			Byteswap (event.data.lstSelect.pList);
+			Byteswap (event.data.lstSelect.selection);
+			break;
+
+		case lstExitEvent:
+			Byteswap (event.data.lstExit.listID);
+			Byteswap (event.data.lstExit.pList);
+			break;
+
+		case popSelectEvent:
+			Byteswap (event.data.popSelect.controlID);
+			Byteswap (event.data.popSelect.controlP);
+			Byteswap (event.data.popSelect.listID);
+			Byteswap (event.data.popSelect.listP);
+			Byteswap (event.data.popSelect.selection);
+			Byteswap (event.data.popSelect.priorSelection);
+			break;
+
+		case fldEnterEvent:
+			Byteswap (event.data.fldEnter.fieldID);
+			Byteswap (event.data.fldEnter.pField);
+			break;
+
+		case fldHeightChangedEvent:
+			Byteswap (event.data.fldHeightChanged.fieldID);
+			Byteswap (event.data.fldHeightChanged.pField);
+			Byteswap (event.data.fldHeightChanged.newHeight);
+			Byteswap (event.data.fldHeightChanged.currentPos);
+			break;
+
+		case fldChangedEvent:
+			Byteswap (event.data.fldChanged.fieldID);
+			Byteswap (event.data.fldChanged.pField);
+			break;
+
+		case tblEnterEvent:
+			Byteswap (event.data.tblEnter.tableID);
+			Byteswap (event.data.tblEnter.pTable);
+			Byteswap (event.data.tblEnter.row);
+			Byteswap (event.data.tblEnter.column);
+			break;
+
+		case tblSelectEvent:
+			Byteswap (event.data.tblEnter.tableID);
+			Byteswap (event.data.tblEnter.pTable);
+			Byteswap (event.data.tblEnter.row);
+			Byteswap (event.data.tblEnter.column);
+			break;
+
+		case daySelectEvent:
+			Byteswap (event.data.daySelect.pSelector);
+			Byteswap (event.data.daySelect.selection);
+			Byteswap (event.data.daySelect.useThisDate);
+			break;
+
+		case menuEvent:
+			Byteswap (event.data.menu.itemID);
+			break;
+
+		case appStopEvent:
+			break;
+
+		case frmLoadEvent:
+			Byteswap (event.data.frmLoad.formID);
+			break;
+
+		case frmOpenEvent:
+			Byteswap (event.data.frmOpen.formID);
+			break;
+
+		case frmGotoEvent:
+			Byteswap (event.data.frmGoto.formID);
+			Byteswap (event.data.frmGoto.recordNum);
+			Byteswap (event.data.frmGoto.matchPos);
+			Byteswap (event.data.frmGoto.matchLen);
+			Byteswap (event.data.frmGoto.matchFieldNum);
+			Byteswap (event.data.frmGoto.matchCustom);
+			break;
+
+		case frmUpdateEvent:
+			Byteswap (event.data.frmUpdate.formID);
+			Byteswap (event.data.frmUpdate.updateCode);
+			break;
+
+		case frmSaveEvent:
+			break;
+
+		case frmCloseEvent:
+			Byteswap (event.data.frmClose.formID);
+			break;
+
+		case frmTitleEnterEvent:
+			Byteswap (event.data.frmTitleEnter.formID);
+			break;
+
+		case frmTitleSelectEvent:
+			Byteswap (event.data.frmTitleSelect.formID);
+			break;
+
+		case tblExitEvent:
+			Byteswap (event.data.tblExit.tableID);
+			Byteswap (event.data.tblExit.pTable);
+			Byteswap (event.data.tblExit.row);
+			Byteswap (event.data.tblExit.column);
+			break;
+
+		case sclEnterEvent:
+			Byteswap (event.data.sclEnter.scrollBarID);
+			Byteswap (event.data.sclEnter.pScrollBar);
+			break;
+
+		case sclExitEvent:
+			Byteswap (event.data.sclExit.scrollBarID);
+			Byteswap (event.data.sclExit.pScrollBar);
+			Byteswap (event.data.sclExit.value);
+			Byteswap (event.data.sclExit.newValue);
+			break;
+
+		case sclRepeatEvent:
+			Byteswap (event.data.sclRepeat.scrollBarID);
+			Byteswap (event.data.sclRepeat.pScrollBar);
+			Byteswap (event.data.sclRepeat.value);
+			Byteswap (event.data.sclRepeat.newValue);
+			Byteswap (event.data.sclRepeat.time);
+			break;
+
+		case tsmConfirmEvent:
+			Byteswap (event.data.tsmConfirm.yomiText);
+			Byteswap (event.data.tsmConfirm.formID);
+			break;
+
+		case tsmFepButtonEvent:
+			Byteswap (event.data.tsmFepButton.buttonID);
+			break;
+
+		case tsmFepModeEvent:
+			Byteswap (event.data.tsmFepMode.mode);
+			break;
+
+		case menuCmdBarOpenEvent:
+			Byteswap (event.data.menuCmdBarOpen.preventFieldButtons);
+			Byteswap (event.data.menuCmdBarOpen.reserved);
+			break;
+
+		case menuOpenEvent:
+			Byteswap (event.data.menuOpen.menuRscID);
+			Byteswap (event.data.menuOpen.cause);
+			break;
+
+		case menuCloseEvent:
+			// Doesn't appear to be used.
+			break;
+
+		case frmGadgetEnterEvent:
+			Byteswap (event.data.gadgetEnter.gadgetID);
+			Byteswap (event.data.gadgetEnter.gadgetP);
+			break;
+
+		case frmGadgetMiscEvent:
+			Byteswap (event.data.gadgetMisc.gadgetID);
+			Byteswap (event.data.gadgetMisc.gadgetP);
+			Byteswap (event.data.gadgetMisc.selector);
+			Byteswap (event.data.gadgetMisc.dataP);
+			break;
+	}
+}
+
+
+void Byteswap (FieldAttrType& attr)
+{
+	Byteswap (*(unsigned short*) &attr);
+
+#if defined (_MSC_VER) || defined (__GNUC__)
+	unsigned short	v = *(unsigned short*) &attr;
+
+	/*
+		======== BITFIELD LAYOUT CHEAT-SHEET ========
+
+		typedef struct {
+			UInt16 usable			:1;
+			UInt16 visible		:1;
+			UInt16 editable		:1;
+			UInt16 singleLine		:1;
+			UInt16 hasFocus		:1;
+			UInt16 dynamicSize	:1;
+			UInt16 insPtVisible	:1;
+			UInt16 dirty			:1;
+			UInt16 underlined		:2;
+			UInt16 justification	:2;
+			UInt16 autoShift		:1;
+			UInt16 hasScrollBar	:1;
+			UInt16 numeric		:1;
+		} FieldAttrType;
+
+		// On the Mac:
+
+		|---------- high byte ----------|---------- low byte -----------|
+
+		 15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0  
+		  7   6   5   4   3   2   1   0   7   6   5   4   3   2   1   0
+		+---+---+---+---+---+---+---+---+-------+-------+---+---+---+---+
+		| u | v | e | s | h | d | i | d |   u   |   j   | a | h | n | * |
+		+---+---+---+---+---+---+---+---+-------+-------+---+---+---+---+
+
+
+		// On Windows (in-register representation):
+
+		|---------- high byte ----------|---------- low byte -----------|
+
+		 15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0  
+		  7   6   5   4   3   2   1   0   7   6   5   4   3   2   1   0
+		+---+---+---+---+-------+-------+---+---+---+---+---+---+---+---+
+		| * | n | h | a |   j   |   u   | d | i | d | h | s | e | v | u |
+		+---+---+---+---+-------+-------+---+---+---+---+---+---+---+---+
+	*/
+
+	v = (unsigned short) (
+		(flipBits[ (v >>  0) & 0x0F ] << 12) |
+		(flipBits[ (v >>  4) & 0x0F ] <<  8) |
+		(flipBits[ (v >>  8) & 0x0F ] <<  4) |
+		(flipBits[ (v >> 12) & 0x0F ] <<  0));
+
+	*(unsigned short*) &attr = v;
+#endif
+}
+
 
 void Byteswap (HwrM68328Type& regs)
 {
@@ -388,6 +711,93 @@ void Byteswap (HwrM68VZ328Type& regs)
 }
 
 
+void Byteswap (PenBtnInfoType& p)
+{
+	Byteswap (p.boundsR);
+	Byteswap (p.asciiCode);
+	Byteswap (p.keyCode);
+	Byteswap (p.modifiers);
+}
+
+
+void Byteswap (PointType& p)
+{
+	Byteswap (p.x);
+	Byteswap (p.y);
+}
+
+
+void Byteswap (RectangleType& r)
+{
+	Byteswap (r.topLeft);
+	Byteswap (r.extent);
+}
+
+
+void Byteswap (SndCommandType& cmd)
+{
+	Byteswap (cmd.cmd);
+	Byteswap (cmd.param1);
+	Byteswap (cmd.param2);
+	Byteswap (cmd.param3);
+}
+
+
+void Byteswap (SysKernelInfoType& info)
+{
+	COMPILE_TIME_ASSERT (sizeof (info.selector) == 1);
+
+	Byteswap (info.selector);
+	Byteswap (info.id);
+
+	switch (info.selector)
+	{
+		case sysKernelInfoSelCurTaskInfo:
+		case sysKernelInfoSelTaskInfo:
+			Byteswap (info.param.task.id);
+			Byteswap (info.param.task.nextID);
+			Byteswap (info.param.task.tag);
+			Byteswap (info.param.task.status);
+			Byteswap (info.param.task.timer);
+			Byteswap (info.param.task.timeSlice);
+			Byteswap (info.param.task.priority);
+			Byteswap (info.param.task.attributes);
+			Byteswap (info.param.task.pendingCalls);
+			Byteswap (info.param.task.senderTaskID);
+			Byteswap (info.param.task.msgExchangeID);
+			Byteswap (info.param.task.tcbP);
+			Byteswap (info.param.task.stackP);
+			Byteswap (info.param.task.stackStart);
+			Byteswap (info.param.task.stackSize);
+			break;
+
+		case sysKernelInfoSelSemaphoreInfo:
+			Byteswap (info.param.semaphore.id);
+			Byteswap (info.param.semaphore.nextID);
+			Byteswap (info.param.semaphore.tag);
+			Byteswap (info.param.semaphore.initValue);
+			Byteswap (info.param.semaphore.curValue);
+			Byteswap (info.param.semaphore.nestLevel);
+			Byteswap (info.param.semaphore.ownerID);
+			break;
+
+		case sysKernelInfoSelTimerInfo:
+			Byteswap (info.param.timer.id);
+			Byteswap (info.param.timer.nextID);
+			Byteswap (info.param.timer.tag);
+			Byteswap (info.param.timer.ticksLeft);
+			Byteswap (info.param.timer.period);
+			Byteswap (info.param.timer.proc);
+			break;
+	}
+}
+
+
+void Byteswap (SysNVParamsType& params)
+{
+	Byteswap (params.rtcHours);
+	Byteswap (params.rtcHourMinSecCopy);
+}
 
 
 void Byteswap (regstruct& p)
@@ -484,5 +894,18 @@ void Byteswap (SED1375RegsType& p)
 	Byteswap (p.unused3);
 	Byteswap (p.unused4);
 }
+
+#ifdef SONY_ROM
+void Byteswap (DateTimeType& p)
+{
+	Byteswap (p.second);
+	Byteswap (p.minute);
+	Byteswap (p.hour);
+	Byteswap (p.day);
+	Byteswap (p.month);
+	Byteswap (p.year);
+	Byteswap (p.weekDay);
+}
+#endif
 
 #endif	// BYTESWAP

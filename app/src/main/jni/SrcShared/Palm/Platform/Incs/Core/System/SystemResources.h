@@ -163,8 +163,6 @@
 #define	sysFileCUart650 					'u650'	// Creator type for '650 UART plug-in
 #define	sysFileCVirtIrComm				'ircm'	// Creator type for IrComm virtual port plug-in.
 
-#define sysFileCVFSMgr                                          'vfsm'  // Creator type for VFSMgr.
-
 #define	sysFileTSystem						'rsrc'	// File type for Main System File
 #define	sysFileTSystemPatch				'ptch'	// File type for System resource file patches
 #define	sysFileTKernel						'krnl'	// File type for System Kernel (AMX)
@@ -242,9 +240,6 @@
 #define	sysResIDCountries					10000		// Resource ID of System countries table
 
 #define	sysResTLibrary						'libr'	// Resource type of System Libraries
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER - obsolete, should be removed:
-#endif // PUBLIC_STUFF_STRIPPED
 //#define	sysResIDLibrarySerMgr328		10000		// Dragonball (68328) UART
 //#define	sysResIDLibrarySerMgr681		10001		// 68681 UART
 //#define	sysResIDLibraryRMPPlugIn		10002		// Reliable Message Protocol NetLib Plug-in
@@ -333,9 +328,6 @@
 // Actually, this section is obsolete.  Instear, .r files should
 // inlude SysResTypes.rh to get these definitions.
 //
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER еее leaving this here for now just in case.
-#endif // PUBLIC_STUFF_STRIPPED
 //-----------------------------------------------------------
 
 #ifdef RESOURCE_COMPILER

@@ -31,21 +31,17 @@ class EmTransportSerial : public EmTransport
 		typedef long	DataBits;
 		typedef long	HwrHandshake;
 
-		typedef vector<PortName>	PortNameList;
-		typedef vector<Baud>		BaudList;
+		typedef vector<PortName>		PortNameList;
+		typedef vector<Baud>			BaudList;
+		typedef vector<StopBits>		StopBitsList;
+		typedef vector<DataBits>		DataBitsList;
+		typedef vector<HwrHandshake>	HwrHandshakeList;
 
 		enum Parity
 		{
 			kNoParity,
 			kOddParity,
 			kEvenParity
-		};
-
-		enum RTSControl
-		{
-			kRTSOff,
-			kRTSOn,
-			kRTSAuto
 		};
 
 		// Note: this used to be named "Config", but that runs
@@ -72,7 +68,6 @@ class EmTransportSerial : public EmTransport
 
 	public:
 								EmTransportSerial		(void);
-								EmTransportSerial		(const EmTransportDescriptor&);
 								EmTransportSerial		(const ConfigSerial&);
 		virtual					~EmTransportSerial		(void);
 
@@ -84,24 +79,14 @@ class EmTransportSerial : public EmTransport
 
 		virtual Bool			CanRead					(void);
 		virtual Bool			CanWrite				(void);
-		virtual long			BytesInBuffer			(long minBytes);
-		virtual string			GetSpecificName			(void);
+		virtual long			BytesInBuffer			(void);
 
 		ErrCode					SetConfig				(const ConfigSerial&);
 		void					GetConfig				(ConfigSerial&);
 
-		void					SetRTS					(RTSControl state);
-		void					SetDTR					(Bool state);
-		void					SetBreak				(Bool state);
-
-		Bool					GetCTS					(void);
-		Bool					GetDSR					(void);
-
 		static EmTransportSerial*	GetTransport		(const ConfigSerial&);
-		static void				GetDescriptorList		(EmTransportDescriptorList&);
+		static void				GetPortNameList			(PortNameList&);
 		static void				GetSerialBaudList		(BaudList&);
-                // RAI 2014: Moved from private so we can muck with it for GPS NMEA passthroug
-		EmHostTransportSerial*	fHost;
 
 	private:
 		void					HostConstruct			(void);
@@ -112,21 +97,14 @@ class EmTransportSerial : public EmTransport
 
 		ErrCode					HostRead				(long&, void*);
 		ErrCode					HostWrite				(long&, const void*);
-		long					HostBytesInBuffer		(long minBytes);
+		long					HostBytesInBuffer		(void);
 
 		ErrCode					HostSetConfig			(const ConfigSerial&);
 
-		void					HostSetRTS				(RTSControl state);
-		void					HostSetDTR				(Bool state);
-		void					HostSetBreak			(Bool state);
+		static void				HostGetSerialPortNameList	(PortNameList&);
+		static void				HostGetSerialBaudList		(BaudList&);
 
-		Bool					HostGetCTS				(void);
-		Bool					HostGetDSR				(void);
-
-		static void				HostGetPortNameList		(PortNameList&);
-		static void				HostGetSerialBaudList	(BaudList&);
-
-		//EmHostTransportSerial*	fHost;
+		EmHostTransportSerial*	fHost;
 		ConfigSerial			fConfig;
 		Bool					fCommEstablished;
 

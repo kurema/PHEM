@@ -49,16 +49,6 @@
 #include <time.h>
 #include <omnithread.h>
 
-// Android debugging
-#if 0
-#include <jni.h>
-#include <android/log.h>
-
-#define  LOG_TAG    "omnithread"
-#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#endif
-
-
 #if (defined(__GLIBC__) && __GLIBC__ >= 2)
 // typedef of struct timeval and gettimeofday();
 #include <sys/time.h>
@@ -100,6 +90,7 @@
 #endif
 
 
+
 ///////////////////////////////////////////////////////////////////////////
 //
 // Mutex
@@ -132,7 +123,6 @@ omni_mutex::lock(void)
     THROW_ERRORS(err);
   }
 #else
-    //LOGI("Locking mutex.");
     THROW_ERRORS(pthread_mutex_lock(&posix_mutex));
 #endif
 }
@@ -149,7 +139,6 @@ omni_mutex::unlock(void)
   }
 #else
     THROW_ERRORS(pthread_mutex_unlock(&posix_mutex));
-    //LOGI("Mutex unlocked.");
 #endif
 }
 
@@ -179,7 +168,6 @@ omni_condition::~omni_condition(void)
 void
 omni_condition::wait(void)
 {
-    //LOGI("Waiting on condition.");
     THROW_ERRORS(pthread_cond_wait(&posix_cond, &mutex->posix_mutex));
 }
 
@@ -222,7 +210,6 @@ omni_condition::signal(void)
 void
 omni_condition::broadcast(void)
 {
-    //LOGI("Broadcasting condition.");
     THROW_ERRORS(pthread_cond_broadcast(&posix_cond));
 }
 
@@ -293,7 +280,6 @@ omni_semaphore::post(void)
 
 int omni_thread::init_t::count = 0;
 
-omni_thread* omni_thread::root_thread;
 omni_mutex* omni_thread::next_id_mutex;
 int omni_thread::next_id = 0;
 
@@ -376,21 +362,21 @@ omni_thread::init_t::init_t(void)
     // Create object for this (i.e. initial) thread.
     //
 
-    root_thread = new omni_thread;
+    omni_thread* t = new omni_thread;
 
-    root_thread->_state = STATE_RUNNING;
+    t->_state = STATE_RUNNING;
 
-    root_thread->posix_thread = pthread_self ();
+    t->posix_thread = pthread_self ();
 
-    DB(cerr << "initial thread " << root_thread->id() << endl);
+    DB(cerr << "initial thread " << t->id() << endl);
 
-    THROW_ERRORS(pthread_setspecific(self_key, (void*) root_thread));
+    THROW_ERRORS(pthread_setspecific(self_key, (void*)t));
 
 #ifdef PthreadSupportThreadPriority
 
 #if (PthreadDraftVersion == 4)
 
-    THROW_ERRORS(pthread_setprio(root_thread->posix_thread,
+    THROW_ERRORS(pthread_setprio(t->posix_thread,
 				 posix_priority(PRIORITY_NORMAL)));
 
 #elif (PthreadDraftVersion == 6)
@@ -400,7 +386,7 @@ omni_thread::init_t::init_t(void)
 
     THROW_ERRORS(pthread_attr_setprio(&attr, posix_priority(PRIORITY_NORMAL)));
 
-    THROW_ERRORS(pthread_setschedattr(root_thread->posix_thread, attr));
+    THROW_ERRORS(pthread_setschedattr(t->posix_thread, attr));
 
 #else
 
@@ -408,20 +394,11 @@ omni_thread::init_t::init_t(void)
 
     sparam.sched_priority = posix_priority(PRIORITY_NORMAL);
 
-    THROW_ERRORS(pthread_setschedparam(root_thread->posix_thread, SCHED_OTHER, &sparam));
+    THROW_ERRORS(pthread_setschedparam(t->posix_thread, SCHED_OTHER, &sparam));
 
 #endif   /* PthreadDraftVersion */
 
 #endif   /* PthreadSupportThreadPriority */
-}
-
-omni_thread::init_t::~init_t (void)
-{
-    if (--count != 0)	// only do it once however many objects get created.
-	return;
-
-    delete root_thread;
-    delete next_id_mutex;
 }
 
 

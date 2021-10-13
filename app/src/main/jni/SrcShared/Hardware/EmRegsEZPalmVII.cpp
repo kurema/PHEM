@@ -15,27 +15,14 @@
 #include "EmRegsEZPalmVII.h"
 #include "EmRegsEZPrv.h"
 
-#include "PalmPack.h"
-#define NON_PORTABLE
-	#include "EZSumo/IncsPrv/HardwareEZ.h"			// hwrEZPortGIRShutdown
-#undef NON_PORTABLE
-#include "PalmPackPop.h"
-
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegsEZPalmVII::GetLineDriverState
+//		¥ EmRegsEZPalmVII::GetSerialPortOn
 // ---------------------------------------------------------------------------
-// Return whether or not the line drivers for the given object are open or
-// closed.
 
-Bool EmRegsEZPalmVII::GetLineDriverState (EmUARTDeviceType type)
+Bool EmRegsEZPalmVII::GetSerialPortOn (int uartNum)
 {
-	if (type == kUARTSerial)
-		// Pass this on to the PLD handler.
-		return EmHALHandler::GetLineDriverState (type);
+	// Pass this on to the PLD handler.
 
-	if (type == kUARTIR)
-		return (READ_REGISTER (portGData) & hwrEZPortGIRShutdown) == 0;
-
-	return false;
+	return EmHALHandler::GetSerialPortOn (uartNum);
 }

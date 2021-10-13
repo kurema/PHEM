@@ -51,24 +51,18 @@
 /************************************************************
  * System Constants
  *************************************************************/
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER - These #defines should be removed from the public SDK!!!
-// Note that since the SysTicksPerSecond() API still uses these,
-// so they'll need to remain in private headers.  There are also
-// several other headers and Palm OS sources that rely on these
-// defines but should be changed to use SysTicksPerSecond().
-#endif // PUBLIC_STUFF_STRIPPED
 // Define the number of ticks/second
 // NOTE:  It is strongly recommended that developers avoid using these
 // defines, and use the SysTicksPerSecond() API (below) instead....
 #if EMULATION_LEVEL == EMULATION_MAC
-	#define	sysTicksPerSecond				60	// 60/sec on Macintosh
+	#define	sysTicksPerSecond				60					// 60/sec on Macintosh
 #elif EMULATION_LEVEL == EMULATION_NONE
-	#define	sysTicksPerSecond				100	// 100/sec on Pilot
+	#define	sysTicksPerSecond				100				// 100/sec on Pilot
 #elif EMULATION_LEVEL == EMULATION_WINDOWS
-	#define	sysTicksPerSecond				1000	// 1000/sec on Windows PC
+	#define	sysTicksPerSecond				1000				// 1000/sec on Windows PC
 #elif EMULATION_LEVEL == EMULATION_UNIX
-	#define sysTicksPerSecond				100	// 1000/sec on Linux
+	#define sysTicksPerSecond				1000
+	// 1000/sec on Linux
 #else
 	#error Invalid EMULATION_LEVEL
 #endif
@@ -277,9 +271,6 @@
 
 //------------------------------------------------------------------------
 // Standard Service Panel launch codes (used by network panel, dialer panel, etc.)
-#ifndef PUBLIC_STUFF_STRIPPED
-// (DOLATER... document parameter block structures)
-#endif // PUBLIC_STUFF_STRIPPED
 //------------------------------------------------------------------------
 #define	sysSvcLaunchCmdSetServiceID			20
 #define	sysSvcLaunchCmdGetServiceID			21
@@ -295,9 +286,6 @@
 
 //------------------------------------------------------------------------
 // Standard Dialer Service launch codes (30 - 39 reserved)
-#ifndef PUBLIC_STUFF_STRIPPED
-// (DOLATER... document parameter block structures)
-#endif // PUBLIC_STUFF_STRIPPED
 //------------------------------------------------------------------------
 
 // sysDialLaunchCmdDial: dials the modem(optionally displays dial progress UI), given service id
@@ -729,9 +717,6 @@ typedef void (*SysTimerProcPtr)(Int32 timerID, Int32 param);
 
 #define	sysFtrNumVendor				15
 			// Result is the vendor id, in the low sixteen bits.						(PalmOS 3.3)
-#ifndef PUBLIC_STUFF_STRIPPED
-			// DOLATER: Need more information about what to expect in this feature.
-#endif // PUBLIC_STUFF_STRIPPED
 
 #define	sysFtrNumCharEncodingFlags	16
 			// Flags for a given character encoding, specified in TextMgr.h		(PalmOS 3.5)

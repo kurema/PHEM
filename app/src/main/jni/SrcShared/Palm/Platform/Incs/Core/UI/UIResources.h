@@ -79,9 +79,6 @@
 
 #define oemVersionID						10001 // Per-DB version provided by OEMs
 
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER kwk - should resource ids >= 10000 be in a private header file, so that
-#endif // PUBLIC_STUFF_STRIPPED
 // developers know they're not guaranteed to be around (or in the same format)?
 
 //------------------------------------------------------------
@@ -281,9 +278,6 @@
 #define phoneLookupFormatStrID			10011
 
 // System string list resources
-#ifndef PUBLIC_STUFF_STRIPPED
-// DOLATER kwk - put in error string defines here (range)
-#endif // PUBLIC_STUFF_STRIPPED
 #define daysOfWeekShortStrListID			10200
 #define daysOfWeekStdStrListID			10201
 #define daysOfWeekLongStrListID			10202

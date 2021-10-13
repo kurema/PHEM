@@ -20,26 +20,6 @@
 // Configuration
 // ==================================================================================
 
-// Define some symbols that control how the Mac and PowerPlant headers are handled.
-// We need to do this here and not in EmCommonMac.h, as including Switches.h and
-// EmTypes.h could pull in some system headers before we have a chance to include
-// EmCommonMac.h.
-
-#define PP_Suppress_Notes_20			1
-#define PP_Suppress_Notes_21			1
-#define PP_Suppress_Notes_22			1
-
-#define PP_Target_Carbon				1
-#define PP_Target_Classic				(!PP_Target_Carbon)
-
-#define PP_StdDialogs_Option			PP_StdDialogs_NavServicesOnly
-#define PP_Obsolete_ThrowExceptionCode	1
-
-#define TARGET_API_MAC_CARBON			PP_Target_Carbon
-#define TARGET_API_MAC_OS8				PP_Target_Classic
-#define OTCARBONAPPLICATION				PP_Target_Carbon
-
-
 // Pull in switches that define our configuration.  We require that the following
 // symbols be defined externally, but all the rest are defined in Switches.h.
 //
@@ -49,7 +29,6 @@
 
 #include "Switches.h"
 
-#include "EmTypes.h"
 
 // ==================================================================================
 // Some very handy macros.
@@ -61,43 +40,12 @@
 
 #define COMPILE_TIME_ASSERT(x)	do { char _dummy[(x) ? 1 : -1]; UNUSED_PARAM (_dummy)} while (0)
 
-#define DEFINE_SCALAR_MODIFIERS(type)		\
-		/* Pre-increment operator */		\
-	inline type	operator++(type& x)			\
-	{										\
-		x = type (x + 1);					\
-		return x;							\
-	}										\
-											\
-		/* Post-increment operator */		\
-	inline type	operator++(type& x, int)	\
-	{										\
-		type result = x;					\
-		x = type (x + 1);					\
-		return result;						\
-	}										\
-											\
-		/* Pre-decrement operator */		\
-	inline type	operator--(type& x)			\
-	{										\
-		x = type (x - 1);					\
-		return x;							\
-	}										\
-											\
-		/* Post-decrement operator */		\
-	inline type	operator--(type& x, int)	\
-	{										\
-		type result = x;					\
-		x = type (x - 1);					\
-		return result;						\
-	}
-
 
 // ==================================================================================
 // Platform-independent definitions
 // ==================================================================================
 
-//#include "EmTypes.h"
+#include "EmTypes.h"
 //#include "EmStructs.h"
 
 

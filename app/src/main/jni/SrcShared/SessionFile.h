@@ -19,12 +19,15 @@
 #include "EmStructs.h"			// Configuration, RGBType
 #include "Platform.h"			// Platform
 
+#ifdef SONY_ROM
+#include "SonyShared\EmRegsLCDCtrl.h"
+#include "SonyShared\ExpansionMgr.h"
+#endif
+
 struct HwrJerryPLDType;
 struct HwrM68328Type;
 struct HwrM68EZ328Type;
 struct HwrM68VZ328Type;
-struct HwrM68SZ328Type;
-struct regstruct;
 struct SED1375RegsType;
 struct SED1376RegsType;
 
@@ -41,6 +44,10 @@ class SessionFile
 	public:
 								SessionFile				(ChunkFile& f);
 								~SessionFile			(void);
+
+#ifdef	SONY_ROM
+#include "SonyShared\SessionFileSony.h"
+#endif
 
 		// ---------- Reading ----------
 
@@ -63,16 +70,10 @@ class SessionFile
 		Bool					ReadSED1376RegsType		(SED1376RegsType&);
 		Bool					ReadSED1376Palette		(RGBType [256]);
 
-		Bool					ReadMediaQRegsType		(Chunk& chunk) { return fFile.ReadChunk (kMediaQRegs, chunk); }
-		Bool					ReadMediaQImage			(void*);
-		Bool					ReadMediaQPalette		(RGBType [256]);
-
 		Bool					ReadPLDRegsType			(HwrJerryPLDType&);
 
 		Bool					ReadGremlinInfo			(Chunk& chunk) { return fFile.ReadChunk (kGremlinInfo, chunk); }
-		Bool					ReadGremlinHistory		(Chunk& chunk) { return this->ReadChunk (kGremlinHistory, chunk, kGzipCompression); }
 		Bool					ReadDebugInfo			(Chunk& chunk) { return fFile.ReadChunk (kDebugInfo, chunk); }
-		Bool					ReadMetaInfo			(Chunk& chunk) { return fFile.ReadChunk (kMetaInfo, chunk); }
 		Bool					ReadPatchInfo			(Chunk& chunk) { return fFile.ReadChunk (kPatchInfo, chunk); }
 		Bool					ReadProfileInfo			(Chunk& chunk) { return fFile.ReadChunk (kProfileInfo, chunk); }
 		Bool					ReadLoggingInfo			(Chunk& chunk) { return fFile.ReadChunk (kLoggingInfo, chunk); }
@@ -111,16 +112,10 @@ class SessionFile
 		void					WriteSED1376RegsType	(const SED1376RegsType&);
 		void					WriteSED1376Palette		(const RGBType [256]);
 
-		void					WriteMediaQRegsType		(const Chunk& chunk) { fFile.WriteChunk (kMediaQRegs, chunk); }
-		void					WriteMediaQImage		(const void*, uint32);
-		void					WriteMediaQPalette		(const RGBType [256]);
-
 		void					WritePLDRegsType		(const HwrJerryPLDType&);
 
 		void					WriteGremlinInfo		(const Chunk& chunk) { fFile.WriteChunk (kGremlinInfo, chunk); }
-		void					WriteGremlinHistory		(const Chunk& chunk) { this->WriteChunk (kGremlinHistory, chunk, kGzipCompression); }
 		void					WriteDebugInfo			(const Chunk& chunk) { fFile.WriteChunk (kDebugInfo, chunk); }
-		void					WriteMetaInfo			(const Chunk& chunk) { fFile.WriteChunk (kMetaInfo, chunk); }
 		void					WritePatchInfo			(const Chunk& chunk) { fFile.WriteChunk (kPatchInfo, chunk); }
 		void					WriteProfileInfo		(const Chunk& chunk) { fFile.WriteChunk (kProfileInfo, chunk); }
 		void					WriteLoggingInfo		(const Chunk& chunk) { fFile.WriteChunk (kLoggingInfo, chunk); }
@@ -164,21 +159,12 @@ class SessionFile
 			kGzipCompression
 		};
 
-		Bool					ReadChunk				(ChunkFile::Tag tag,
+		long					ReadChunk				(ChunkFile::Tag tag,
 														 void*,
 														 CompressionType);
-
-		Bool					ReadChunk				(ChunkFile::Tag tag,
-														 Chunk& chunk,
-														 CompressionType);
-
 		void					WriteChunk				(ChunkFile::Tag tag,
 														 uint32,
 														 const void*,
-														 CompressionType);
-
-		void					WriteChunk				(ChunkFile::Tag tag,
-														 const Chunk& chunk,
 														 CompressionType);
 
 		// These functions access kROMAliasTag, kROMNameTag, kROMPathTag
@@ -208,18 +194,12 @@ class SessionFile
 			kSED1375Palette		= '5clt',	// LCD color lookup table.
 
 			kSED1376Regs		= '6reg',	// Memory-mapped registers struct.
-			kSED1376Palette		= '6clt',	// LCD color lookup table.
-
-			kMediaQRegs			= 'MQrg',	// Memory-mapped registers struct.
-			kMediaQImage		= 'MQim',	// LCD buffer memory.
-			kMediaQPalette		= 'MQcl',	// LCD color lookup table.
+			kSED1376Palette		= '5clt',	// LCD color lookup table.
 
 			kPLDRegs			= 'pld ',	// Memory-mapped registers struct.
 
 			kGremlinInfo		= 'grem',	// Gremlin state
-			kGremlinHistory		= 'hist',	// Gremlin event history
 			kDebugInfo			= 'dbug',	// Debug state
-			kMetaInfo			= 'meta',	// MetaMemory state
 			kPatchInfo			= 'ptch',	// Trappatch state
 			kProfileInfo		= 'prof',	// Profiling state
 			kLoggingInfo		= 'log ',	// Standard LogStream data
@@ -242,6 +222,15 @@ class SessionFile
 			
 			kRLERAMDataTag		= 'cram',	// RLE compressed RAM image - obsolete
 			kRLEMetaRAMDataTag	= 'mram',	// RLE compressed meta-RAM image - obsolete
+
+#ifdef SONY_ROM
+			kMSSize				= 'mssz',	// MemoryStick size
+			kMSfs				= 'msfs',	// MemoryStick File System Library
+			kLCDCtrlRegs		= 'mqrg',	// Memory-mapped registers struct.
+			kLCDCtrlImage		= 'mqrm',	// LCD buffer memory.
+			kLCDCtrlPalette		= 'mqcp',	// LCD color lookup table.
+#endif
+
 			kUncompRAMDataTag	= 'ram '	// Uncompressed RAM image - obsolete
 		};
 

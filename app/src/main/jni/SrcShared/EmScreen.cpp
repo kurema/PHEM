@@ -249,15 +249,16 @@ Bool EmScreen::GetBits (EmScreenUpdateInfo& info)
 	// Get the range of bytes affected, clipping to the range of the
 	// screen.  From this information, we can determine the first and
 	// last affected scanlines.
-
 	info.fScreenLow		= max (gScreenDirtyLow, screenBegin);
 	info.fScreenHigh	= min (gScreenDirtyHigh, screenEnd);
 
 	// Reset gScreenDirtyLow/High with sentinel values so that they can
 	// be munged again by EmScreen::MarkDirty.
 
+#ifndef SONY_ROM
 	gScreenDirtyLow		= EmMemEOM;
 	gScreenDirtyHigh	= EmMemNULL;
+#endif
 
 	// If no lines need to be updated, we can return now.
 
@@ -265,6 +266,11 @@ Bool EmScreen::GetBits (EmScreenUpdateInfo& info)
 	{
 		return false;
 	}
+
+#ifdef SONY_ROM
+	gScreenDirtyLow		= EmMemEOM;
+	gScreenDirtyHigh	= EmMemNULL;
+#endif
 
 	// Get the current state of things.  Do this only if the LCD is on.
 	// If the LCD is off, we may not be able to get the contents of its

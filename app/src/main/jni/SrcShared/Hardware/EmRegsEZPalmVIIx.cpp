@@ -90,21 +90,14 @@ Bool EmRegsEZPalmVIIx::GetLCDBacklightOn (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegsEZPalmVIIx::GetLineDriverState
+//		¥ EmRegsEZPalmVIIx::GetSerialPortOn
 // ---------------------------------------------------------------------------
-// Return whether or not the line drivers for the given object are open or
-// closed.
 
-Bool EmRegsEZPalmVIIx::GetLineDriverState (EmUARTDeviceType type)
+Bool EmRegsEZPalmVIIx::GetSerialPortOn (int uartNum)
 {
-	if (type == kUARTSerial)
-		// Pass this on to the PLD handler.
-		return EmHALHandler::GetLineDriverState (type);
+	// Pass this on to the PLD handler.
 
-	if (type == kUARTIR)
-		return (READ_REGISTER (portGData) & hwrEZPortGIRShutdown) == 0;
-
-	return false;
+	return EmHALHandler::GetSerialPortOn (uartNum);
 }
 
 

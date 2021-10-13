@@ -78,20 +78,12 @@ Bool EmRegsEZPalmV::GetLCDBacklightOn (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegsEZPalmV::GetLineDriverState
+//		¥ EmRegsEZPalmV::GetSerialPortOn
 // ---------------------------------------------------------------------------
-// Return whether or not the line drivers for the given object are open or
-// closed.
 
-Bool EmRegsEZPalmV::GetLineDriverState (EmUARTDeviceType type)
+Bool EmRegsEZPalmV::GetSerialPortOn (int /*uartNum*/)
 {
-	if (type == kUARTSerial)
-		return (READ_REGISTER (portDData) & hwrEZPortD232Enable) != 0;
-
-	if (type == kUARTIR)
-		return (READ_REGISTER (portGData) & hwrEZPortGIRShutdown) == 0;
-
-	return false;
+	return (READ_REGISTER (portDData) & hwrEZPortD232Enable) != 0;
 }
 
 
