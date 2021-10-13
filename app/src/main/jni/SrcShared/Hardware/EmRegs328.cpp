@@ -325,7 +325,7 @@ const HwrM68328Type	kInitial68328RegisterValues =
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::EmRegs328
+//		Â¥ EmRegs328::EmRegs328
 // ---------------------------------------------------------------------------
 
 EmRegs328::EmRegs328 (void) :
@@ -350,7 +350,7 @@ EmRegs328::EmRegs328 (void) :
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::~EmRegs328
+//		Â¥ EmRegs328::~EmRegs328
 // ---------------------------------------------------------------------------
 
 EmRegs328::~EmRegs328 (void)
@@ -359,7 +359,7 @@ EmRegs328::~EmRegs328 (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::Initialize
+//		Â¥ EmRegs328::Initialize
 // ---------------------------------------------------------------------------
 
 void EmRegs328::Initialize (void)
@@ -371,7 +371,7 @@ void EmRegs328::Initialize (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::Reset
+//		Â¥ EmRegs328::Reset
 // ---------------------------------------------------------------------------
 
 void EmRegs328::Reset (Bool hardwareReset)
@@ -402,7 +402,7 @@ void EmRegs328::Reset (Bool hardwareReset)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::Save
+//		Â¥ EmRegs328::Save
 // ---------------------------------------------------------------------------
 
 void EmRegs328::Save (SessionFile& f)
@@ -445,7 +445,7 @@ void EmRegs328::Save (SessionFile& f)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::Load
+//		Â¥ EmRegs328::Load
 // ---------------------------------------------------------------------------
 
 void EmRegs328::Load (SessionFile& f)
@@ -530,7 +530,7 @@ void EmRegs328::Load (SessionFile& f)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::Dispose
+//		Â¥ EmRegs328::Dispose
 // ---------------------------------------------------------------------------
 
 void EmRegs328::Dispose (void)
@@ -543,7 +543,7 @@ void EmRegs328::Dispose (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::SetSubBankHandlers
+//		Â¥ EmRegs328::SetSubBankHandlers
 // ---------------------------------------------------------------------------
 
 void EmRegs328::SetSubBankHandlers (void)
@@ -719,7 +719,7 @@ void EmRegs328::SetSubBankHandlers (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetRealAddress
+//		Â¥ EmRegs328::GetRealAddress
 // ---------------------------------------------------------------------------
 
 uint8* EmRegs328::GetRealAddress (emuptr address)
@@ -731,7 +731,7 @@ uint8* EmRegs328::GetRealAddress (emuptr address)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetAddressStart
+//		Â¥ EmRegs328::GetAddressStart
 // ---------------------------------------------------------------------------
 
 emuptr EmRegs328::GetAddressStart (void)
@@ -741,19 +741,19 @@ emuptr EmRegs328::GetAddressStart (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetAddressRange
+//		Â¥ EmRegs328::GetAddressRange
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::GetAddressRange (void)
 {
-	COMPILE_TIME_ASSERT (kMemorySize == 0x0B14);
+	static_assert (kMemorySize == 0x0B14);
 
 	return kMemorySize;
 }
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::Cycle
+//		Â¥ EmRegs328::Cycle
 // ---------------------------------------------------------------------------
 // Handles periodic events that need to occur when the processor cycles (like
 // updating timer registers).  This function is called in two places from
@@ -885,7 +885,7 @@ void EmRegs328::Cycle (Bool sleeping)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::CycleSlowly
+//		Â¥ EmRegs328::CycleSlowly
 // ---------------------------------------------------------------------------
 // Handles periodic events that need to occur when the processor cycles (like
 // updating timer registers).  This function is called in two places from
@@ -946,7 +946,7 @@ void EmRegs328::CycleSlowly (Bool sleeping)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::TurnSoundOff
+//		Â¥ EmRegs328::TurnSoundOff
 // ---------------------------------------------------------------------------
 
 void EmRegs328::TurnSoundOff (void)
@@ -957,7 +957,7 @@ void EmRegs328::TurnSoundOff (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::ResetTimer
+//		Â¥ EmRegs328::ResetTimer
 // ---------------------------------------------------------------------------
 
 void EmRegs328::ResetTimer (void)
@@ -967,7 +967,7 @@ void EmRegs328::ResetTimer (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::ResetRTC
+//		Â¥ EmRegs328::ResetRTC
 // ---------------------------------------------------------------------------
 
 void EmRegs328::ResetRTC (void)
@@ -981,7 +981,7 @@ void EmRegs328::ResetRTC (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetInterruptLevel
+//		Â¥ EmRegs328::GetInterruptLevel
 // ---------------------------------------------------------------------------
 
 int32 EmRegs328::GetInterruptLevel (void)
@@ -1038,7 +1038,7 @@ int32 EmRegs328::GetInterruptLevel (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetInterruptBase
+//		Â¥ EmRegs328::GetInterruptBase
 // ---------------------------------------------------------------------------
 
 int32 EmRegs328::GetInterruptBase (void)
@@ -1048,7 +1048,7 @@ int32 EmRegs328::GetInterruptBase (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetLCDHasFrame
+//		Â¥ EmRegs328::GetLCDHasFrame
 // ---------------------------------------------------------------------------
 
 Bool EmRegs328::GetLCDHasFrame (void)
@@ -1058,7 +1058,7 @@ Bool EmRegs328::GetLCDHasFrame (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetLCDBeginEnd
+//		Â¥ EmRegs328::GetLCDBeginEnd
 // ---------------------------------------------------------------------------
 
 void EmRegs328::GetLCDBeginEnd (emuptr& begin, emuptr& end)
@@ -1073,7 +1073,7 @@ void EmRegs328::GetLCDBeginEnd (emuptr& begin, emuptr& end)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetLCDScanlines
+//		Â¥ EmRegs328::GetLCDScanlines
 // ---------------------------------------------------------------------------
 
 void EmRegs328::GetLCDScanlines (EmScreenUpdateInfo& info)
@@ -1119,7 +1119,7 @@ void EmRegs328::GetLCDScanlines (EmScreenUpdateInfo& info)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetUARTDevice
+//		Â¥ EmRegs328::GetUARTDevice
 // ---------------------------------------------------------------------------
 // Return what sort of device is hooked up to the given UART.
 
@@ -1144,7 +1144,7 @@ EmUARTDeviceType EmRegs328::GetUARTDevice (int /*uartNum*/)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetDynamicHeapSize
+//		Â¥ EmRegs328::GetDynamicHeapSize
 // ---------------------------------------------------------------------------
 
 int32 EmRegs328::GetDynamicHeapSize (void)
@@ -1199,7 +1199,7 @@ int32 EmRegs328::GetDynamicHeapSize (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetROMSize
+//		Â¥ EmRegs328::GetROMSize
 // ---------------------------------------------------------------------------
 
 int32 EmRegs328::GetROMSize (void)
@@ -1211,7 +1211,7 @@ int32 EmRegs328::GetROMSize (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetROMBaseAddress
+//		Â¥ EmRegs328::GetROMBaseAddress
 // ---------------------------------------------------------------------------
 
 emuptr EmRegs328::GetROMBaseAddress (void)
@@ -1226,7 +1226,7 @@ emuptr EmRegs328::GetROMBaseAddress (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::ChipSelectsConfigured
+//		Â¥ EmRegs328::ChipSelectsConfigured
 // ---------------------------------------------------------------------------
 
 Bool EmRegs328::ChipSelectsConfigured (void)
@@ -1236,7 +1236,7 @@ Bool EmRegs328::ChipSelectsConfigured (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetSystemClockFrequency
+//		Â¥ EmRegs328::GetSystemClockFrequency
 // ---------------------------------------------------------------------------
 
 int32 EmRegs328::GetSystemClockFrequency (void)
@@ -1275,7 +1275,7 @@ int32 EmRegs328::GetSystemClockFrequency (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetCanStop
+//		Â¥ EmRegs328::GetCanStop
 // ---------------------------------------------------------------------------
 
 Bool EmRegs328::GetCanStop (void)
@@ -1293,7 +1293,7 @@ Bool EmRegs328::GetCanStop (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetAsleep
+//		Â¥ EmRegs328::GetAsleep
 // ---------------------------------------------------------------------------
 
 Bool EmRegs328::GetAsleep (void)
@@ -1303,7 +1303,7 @@ Bool EmRegs328::GetAsleep (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetPortInputValue
+//		Â¥ EmRegs328::GetPortInputValue
 // ---------------------------------------------------------------------------
 // Return the GPIO values for the pins on the port.  These values are used
 // if the select pins are high.
@@ -1322,7 +1322,7 @@ uint8 EmRegs328::GetPortInputValue (int port)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetPortInternalValue
+//		Â¥ EmRegs328::GetPortInternalValue
 // ---------------------------------------------------------------------------
 // Return the dedicated values for the pins on the port.  These values are
 // used if the select pins are low.
@@ -1364,7 +1364,7 @@ uint8 EmRegs328::GetPortInternalValue (int port)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::PortDataChanged
+//		Â¥ EmRegs328::PortDataChanged
 // ---------------------------------------------------------------------------
 
 void EmRegs328::PortDataChanged (int port, uint8, uint8 newValue)
@@ -1392,7 +1392,7 @@ void EmRegs328::PortDataChanged (int port, uint8, uint8 newValue)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::pllFreqSelRead
+//		Â¥ EmRegs328::pllFreqSelRead
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::pllFreqSelRead (emuptr address, int size)
@@ -1411,7 +1411,7 @@ uint32 EmRegs328::pllFreqSelRead (emuptr address, int size)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::portXDataRead
+//		Â¥ EmRegs328::portXDataRead
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::portXDataRead (emuptr address, int)
@@ -1496,7 +1496,7 @@ uint32 EmRegs328::portXDataRead (emuptr address, int)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::tmr1StatusRead
+//		Â¥ EmRegs328::tmr1StatusRead
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::tmr1StatusRead (emuptr address, int size)
@@ -1537,7 +1537,7 @@ uint32 EmRegs328::tmr1StatusRead (emuptr address, int size)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::tmr2StatusRead
+//		Â¥ EmRegs328::tmr2StatusRead
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::tmr2StatusRead (emuptr address, int size)
@@ -1588,7 +1588,7 @@ uint32 EmRegs328::tmr2StatusRead (emuptr address, int size)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::uartRead
+//		Â¥ EmRegs328::uartRead
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::uartRead (emuptr address, int size)
@@ -1608,7 +1608,7 @@ uint32 EmRegs328::uartRead (emuptr address, int size)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::rtcHourMinSecRead
+//		Â¥ EmRegs328::rtcHourMinSecRead
 // ---------------------------------------------------------------------------
 
 uint32 EmRegs328::rtcHourMinSecRead (emuptr address, int size)
@@ -1641,7 +1641,7 @@ uint32 EmRegs328::rtcHourMinSecRead (emuptr address, int size)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::csASelect1Write
+//		Â¥ EmRegs328::csASelect1Write
 // ---------------------------------------------------------------------------
 
 void EmRegs328::csASelect1Write (emuptr address, int size, uint32 value)
@@ -1657,7 +1657,7 @@ void EmRegs328::csASelect1Write (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::csCSelect0Write
+//		Â¥ EmRegs328::csCSelect0Write
 // ---------------------------------------------------------------------------
 
 void EmRegs328::csCSelect0Write (emuptr address, int size, uint32 value)
@@ -1679,7 +1679,7 @@ void EmRegs328::csCSelect0Write (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::csCSelect1Write
+//		Â¥ EmRegs328::csCSelect1Write
 // ---------------------------------------------------------------------------
 
 void EmRegs328::csCSelect1Write (emuptr address, int size, uint32 value)
@@ -1701,7 +1701,7 @@ void EmRegs328::csCSelect1Write (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::intMaskHiWrite
+//		Â¥ EmRegs328::intMaskHiWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::intMaskHiWrite (emuptr address, int size, uint32 value)
@@ -1717,7 +1717,7 @@ void EmRegs328::intMaskHiWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::intMaskLoWrite
+//		Â¥ EmRegs328::intMaskLoWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::intMaskLoWrite (emuptr address, int size, uint32 value)
@@ -1733,7 +1733,7 @@ void EmRegs328::intMaskLoWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::intStatusHiWrite
+//		Â¥ EmRegs328::intStatusHiWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::intStatusHiWrite (emuptr address, int size, uint32 value)
@@ -1807,7 +1807,7 @@ void EmRegs328::intStatusHiWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::portXDataWrite
+//		Â¥ EmRegs328::portXDataWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::portXDataWrite (emuptr address, int size, uint32 value)
@@ -1840,7 +1840,7 @@ void EmRegs328::portXDataWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::portDIntReqEnWrite
+//		Â¥ EmRegs328::portDIntReqEnWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::portDIntReqEnWrite (emuptr address, int size, uint32 value)
@@ -1856,7 +1856,7 @@ void EmRegs328::portDIntReqEnWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::tmr1StatusWrite
+//		Â¥ EmRegs328::tmr1StatusWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::tmr1StatusWrite (emuptr address, int size, uint32 value)
@@ -1893,7 +1893,7 @@ void EmRegs328::tmr1StatusWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::tmr2StatusWrite
+//		Â¥ EmRegs328::tmr2StatusWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::tmr2StatusWrite (emuptr address, int size, uint32 value)
@@ -1930,7 +1930,7 @@ void EmRegs328::tmr2StatusWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::wdCounterWrite
+//		Â¥ EmRegs328::wdCounterWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::wdCounterWrite (emuptr address, int size, uint32 value)
@@ -1946,7 +1946,7 @@ void EmRegs328::wdCounterWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::spiMasterControlWrite
+//		Â¥ EmRegs328::spiMasterControlWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::spiMasterControlWrite (emuptr address, int size, uint32 value)
@@ -1990,7 +1990,7 @@ void EmRegs328::spiMasterControlWrite (emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::uartWrite
+//		Â¥ EmRegs328::uartWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::uartWrite(emuptr address, int size, uint32 value)
@@ -2013,7 +2013,7 @@ void EmRegs328::uartWrite(emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::lcdRegisterWrite
+//		Â¥ EmRegs328::lcdRegisterWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::lcdRegisterWrite(emuptr address, int size, uint32 value)
@@ -2063,7 +2063,7 @@ void EmRegs328::lcdRegisterWrite(emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::rtcControlWrite
+//		Â¥ EmRegs328::rtcControlWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::rtcControlWrite(emuptr address, int size, uint32 value)
@@ -2079,7 +2079,7 @@ void EmRegs328::rtcControlWrite(emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::rtcIntStatusWrite
+//		Â¥ EmRegs328::rtcIntStatusWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::rtcIntStatusWrite(emuptr address, int size, uint32 value)
@@ -2113,7 +2113,7 @@ void EmRegs328::rtcIntStatusWrite(emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::rtcIntEnableWrite
+//		Â¥ EmRegs328::rtcIntEnableWrite
 // ---------------------------------------------------------------------------
 
 void EmRegs328::rtcIntEnableWrite(emuptr address, int size, uint32 value)
@@ -2129,7 +2129,7 @@ void EmRegs328::rtcIntEnableWrite(emuptr address, int size, uint32 value)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::ButtonEvent
+//		Â¥ EmRegs328::ButtonEvent
 // ---------------------------------------------------------------------------
 // Handles a Palm device button event by updating the appropriate registers.
 
@@ -2175,7 +2175,7 @@ void EmRegs328::ButtonEvent (SkinElementType button, Bool buttonIsDown)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::HotSyncEvent
+//		Â¥ EmRegs328::HotSyncEvent
 // ---------------------------------------------------------------------------
 // Handles a HotSync button event by updating the appropriate registers.
 
@@ -2203,7 +2203,7 @@ void EmRegs328::HotSyncEvent (Bool iButton_IsDown)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetKeyBits
+//		Â¥ EmRegs328::GetKeyBits
 // ---------------------------------------------------------------------------
 
 uint8 EmRegs328::GetKeyBits (void)
@@ -2220,7 +2220,7 @@ uint8 EmRegs328::GetKeyBits (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::ButtonToBits
+//		Â¥ EmRegs328::ButtonToBits
 // ---------------------------------------------------------------------------
 
 uint16 EmRegs328::ButtonToBits (SkinElementType button)
@@ -2259,7 +2259,7 @@ uint16 EmRegs328::ButtonToBits (SkinElementType button)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UpdateInterrupts
+//		Â¥ EmRegs328::UpdateInterrupts
 // ---------------------------------------------------------------------------
 // Determines whether an interrupt has occurred by copying the Interrupt
 // Pending Register to the Interrupt Status Register.
@@ -2294,7 +2294,7 @@ void EmRegs328::UpdateInterrupts (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UpdatePortDInterrupts
+//		Â¥ EmRegs328::UpdatePortDInterrupts
 // ---------------------------------------------------------------------------
 // Determine what interrupts need to be generated based on the current
 // settings in portDData and fPortDEdge.
@@ -2367,7 +2367,7 @@ void EmRegs328::UpdatePortDInterrupts (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UpdateRTCInterrupts
+//		Â¥ EmRegs328::UpdateRTCInterrupts
 // ---------------------------------------------------------------------------
 // Determine whether to set or clear the RTC bit in the interrupt pending
 // register based on the current RTC register values.
@@ -2418,7 +2418,7 @@ void EmRegs328::UpdateRTCInterrupts (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::IDDetectAsserted
+//		Â¥ EmRegs328::IDDetectAsserted
 // ---------------------------------------------------------------------------
 // cf. HwrIdentifyFeatures and HwrPreRAMInit.
 
@@ -2436,7 +2436,7 @@ Bool EmRegs328::IDDetectAsserted (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetHardwareID
+//		Â¥ EmRegs328::GetHardwareID
 // ---------------------------------------------------------------------------
 
 UInt8 EmRegs328::GetHardwareID (void)
@@ -2481,7 +2481,7 @@ UInt8 EmRegs328::GetHardwareID (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UARTStateChanged
+//		Â¥ EmRegs328::UARTStateChanged
 // ---------------------------------------------------------------------------
 
 void EmRegs328::UARTStateChanged (Bool sendTxData)
@@ -2497,7 +2497,7 @@ void EmRegs328::UARTStateChanged (Bool sendTxData)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UpdateUARTState
+//		Â¥ EmRegs328::UpdateUARTState
 // ---------------------------------------------------------------------------
 
 void EmRegs328::UpdateUARTState (Bool refreshRxData)
@@ -2513,7 +2513,7 @@ void EmRegs328::UpdateUARTState (Bool refreshRxData)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UpdateUARTInterrupts
+//		Â¥ EmRegs328::UpdateUARTInterrupts
 // ---------------------------------------------------------------------------
 
 void EmRegs328::UpdateUARTInterrupts (const EmUARTDragonball::State& state)
@@ -2545,7 +2545,7 @@ void EmRegs328::UpdateUARTInterrupts (const EmUARTDragonball::State& state)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::MarshalUARTState
+//		Â¥ EmRegs328::MarshalUARTState
 // ---------------------------------------------------------------------------
 
 void EmRegs328::MarshalUARTState (EmUARTDragonball::State& state)
@@ -2632,7 +2632,7 @@ void EmRegs328::MarshalUARTState (EmUARTDragonball::State& state)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::UnmarshalUARTState
+//		Â¥ EmRegs328::UnmarshalUARTState
 // ---------------------------------------------------------------------------
 
 void EmRegs328::UnmarshalUARTState (const EmUARTDragonball::State& state)
@@ -2728,7 +2728,7 @@ void EmRegs328::UnmarshalUARTState (const EmUARTDragonball::State& state)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::GetPort
+//		Â¥ EmRegs328::GetPort
 // ---------------------------------------------------------------------------
 // Given an address, return a value indicating what port it is associated with.
 
@@ -2756,7 +2756,7 @@ int EmRegs328::GetPort (emuptr address)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmRegs328::PrvGetPalette
+//		Â¥ EmRegs328::PrvGetPalette
 // ---------------------------------------------------------------------------
 
 void EmRegs328::PrvGetPalette (RGBList& thePalette)
