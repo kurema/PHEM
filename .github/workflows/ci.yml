@@ -57,7 +57,7 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
           export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
           export KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
-          export KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+          export KEY_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
         fi
         chmod +x ./gradlew
         ./gradlew assembleRelease
