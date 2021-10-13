@@ -30,38 +30,38 @@
  * 68000 Exception Vector table
  ***********************************************************************/
 typedef struct M68KExcTableType {
-	UInt32	initStack;								// initial stack pointer
-	UInt32	initPC;									// initial PC
+	uint32_t	initStack;								// initial stack pointer
+	uint32_t	initPC;									// initial PC
 	
-	UInt32	busErr;									// 08 
-	UInt32	addressErr;								// 0C  
-	UInt32	illegalInstr;							// 10  
-	UInt32	divideByZero;							// 14  
-	UInt32	chk;										// 18
-	UInt32	trap;										// 1C
-	UInt32	privilege;								// 20
-	UInt32	trace;									// 24
-	UInt32	aTrap;									// 28
-	UInt32	fTrap;									// 2C
-	UInt32	reserved12;								// 30
-	UInt32	coproc;									// 34
-	UInt32	formatErr;								// 38
-	UInt32	unitializedInt;						// 3C
+	uint32_t	busErr;									// 08 
+	uint32_t	addressErr;								// 0C  
+	uint32_t	illegalInstr;							// 10  
+	uint32_t	divideByZero;							// 14  
+	uint32_t	chk;										// 18
+	uint32_t	trap;										// 1C
+	uint32_t	privilege;								// 20
+	uint32_t	trace;									// 24
+	uint32_t	aTrap;									// 28
+	uint32_t	fTrap;									// 2C
+	uint32_t	reserved12;								// 30
+	uint32_t	coproc;									// 34
+	uint32_t	formatErr;								// 38
+	uint32_t	unitializedInt;						// 3C
 	
-	UInt32	reserved[8];							// 40-5C
+	uint32_t	reserved[8];							// 40-5C
 	
-	UInt32	spuriousInt;							// 60
-	UInt32	autoVec1;								// 64
-	UInt32	autoVec2;								// 68
-	UInt32	autoVec3;								// 6C
-	UInt32	autoVec4;								// 70
-	UInt32	autoVec5;								// 74
-	UInt32	autoVec6;								// 78
-	UInt32	autoVec7;								// 7C
+	uint32_t	spuriousInt;							// 60
+	uint32_t	autoVec1;								// 64
+	uint32_t	autoVec2;								// 68
+	uint32_t	autoVec3;								// 6C
+	uint32_t	autoVec4;								// 70
+	uint32_t	autoVec5;								// 74
+	uint32_t	autoVec6;								// 78
+	uint32_t	autoVec7;								// 7C
 	
-	UInt32	trapN[16];								// 80 - BC
+	uint32_t	trapN[16];								// 80 - BC
 	
-	UInt32	unassigned[16];						// C0 - FC
+	uint32_t	unassigned[16];						// C0 - FC
 	} M68KExcTableType;
  
  
@@ -75,12 +75,12 @@ typedef struct M68KExcTableType {
  *
  **************************************************************************************/
 typedef struct M68KRegsType {
-	UInt32	d[8];							/*  data registers  */
-	UInt32	a[7];							/*  address registers  */
-	UInt32	usp;							/*  user stack pointer  */
-	UInt32	ssp;							/*  supervisor stack pointer  */
-	UInt32	pc;							/*  program counter  */
-	UInt16	sr;							/*  status register  */
+	uint32_t	d[8];							/*  data registers  */
+	uint32_t	a[7];							/*  address registers  */
+	uint32_t	usp;							/*  user stack pointer  */
+	uint32_t	ssp;							/*  supervisor stack pointer  */
+	uint32_t	pc;							/*  program counter  */
+	uint16_t	sr;							/*  status register  */
 } M68KRegsType;
 
 
