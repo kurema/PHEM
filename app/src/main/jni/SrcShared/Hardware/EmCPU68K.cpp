@@ -55,9 +55,6 @@ perfRec perftbl[65536];
 #define SPCFLAG_END_OF_CYCLE	(0x40000000)
 
 
-//Test
-template <typename T, int> struct type_;
-#define PRINT_SIZEOF(type) inline void size_of_(type_<type, sizeof(type)>) {}
 // Data needed by UAE.
 
 int	areg_byteinc[] = { 1,1,1,1,1,1,1,2 };	// (normally in newcpu.c)
@@ -110,7 +107,6 @@ struct alignas(2) ExceptionStackFrame2
 };
 
 //#include "PalmPackPop.h"
-PRINT_SIZEOF(ExceptionStackFrame1)
 
 
 EmCPU68K*	gCPU68K;
