@@ -1193,7 +1193,7 @@ void EmCPU68K::ProcessException (ExceptionNumber exception)
 
 	if (exception == kException_BusErr || exception == kException_AddressErr)
 	{
-		static_assert (sizeof (ExceptionStackFrame2) == 14);
+		static_assert (sizeof (ExceptionStackFrame2) == 14, "sizeof(ExceptionStackFrame2) not correct.");
 		m68k_areg (regs, 7) -= sizeof (ExceptionStackFrame2);
 		CHECK_STACK_POINTER_DECREMENT ();
 
@@ -1209,7 +1209,7 @@ void EmCPU68K::ProcessException (ExceptionNumber exception)
 	}
 	else
 	{
-		static_assert (sizeof (ExceptionStackFrame1) == 6);
+		static_assert (sizeof (ExceptionStackFrame1) == 6, "sizeof(ExceptionStackFrame1) not correct.");
 		m68k_areg (regs, 7) -= sizeof (ExceptionStackFrame1);
 		CHECK_STACK_POINTER_DECREMENT ();
 
