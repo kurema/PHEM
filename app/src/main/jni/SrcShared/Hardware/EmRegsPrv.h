@@ -18,20 +18,20 @@
 
 // Inline functions for reading/writing registers.
 
-inline int8		_get_reg (int8* a)				{ return EmMemDoGet8 (a); }
-inline int16	_get_reg (int16* a)				{ return EmMemDoGet16 (a); }
-inline int32	_get_reg (int32* a)				{ return EmMemDoGet32 (a); }
+inline int8		_get_reg (int8_t* a)				{ return EmMemDoGet8 (a); }
+inline int16	_get_reg (int16_t* a)				{ return EmMemDoGet16 (a); }
+inline int32	_get_reg (int32_t* a)				{ return EmMemDoGet32 (a); }
 
-inline uint8	_get_reg (uint8* a)				{ return EmMemDoGet8 (a); }
-inline uint16	_get_reg (uint16* a)			{ return EmMemDoGet16 (a); }
-inline uint32	_get_reg (uint32* a)			{ return EmMemDoGet32 (a); }
+inline uint8	_get_reg (uint8_t* a)				{ return EmMemDoGet8 (a); }
+inline uint16	_get_reg (uint16_t* a)			{ return EmMemDoGet16 (a); }
+inline uint32	_get_reg (uint32_t* a)			{ return EmMemDoGet32 (a); }
 
-inline void		_put_reg (int8* a, int8 v)		{ EmMemDoPut8 (a, v); }
-inline void		_put_reg (int16* a, int16 v)	{ EmMemDoPut16 (a, v); }
-inline void		_put_reg (int32* a, int32 v)	{ EmMemDoPut32 (a, v); }
+inline void		_put_reg (int8_t* a, int8_t v)		{ EmMemDoPut8 (a, v); }
+inline void		_put_reg (int16_t* a, int16_t v)	{ EmMemDoPut16 (a, v); }
+inline void		_put_reg (int32_t* a, int32_t v)	{ EmMemDoPut32 (a, v); }
 
-inline void		_put_reg (uint8* a, uint8 v)	{ EmMemDoPut8 (a, v); }
-inline void		_put_reg (uint16* a, uint16 v)	{ EmMemDoPut16 (a, v); }
-inline void		_put_reg (uint32* a, uint32 v)	{ EmMemDoPut32 (a, v); }
+inline void		_put_reg (uint8_t* a, uint8_t v)	{ EmMemDoPut8 (a, v); }
+inline void		_put_reg (uint16_t* a, uint16_t v)	{ EmMemDoPut16 (a, v); }
+inline void		_put_reg (uint32_t* a, uint32_t v)	{ EmMemDoPut32 (a, v); }
 
 #endif	// EmRegsPrv_h
