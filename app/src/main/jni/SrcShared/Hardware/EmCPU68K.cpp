@@ -113,7 +113,7 @@ EmCPU68K*	gCPU68K;
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::Cycle
+//		Â¥ EmCPU68K::Cycle
 // ---------------------------------------------------------------------------
 
 // this guy is a macro instead of an inline function so that "counter" can
@@ -144,7 +144,7 @@ EmCPU68K*	gCPU68K;
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::EmCPU68K
+//		Â¥ EmCPU68K::EmCPU68K
 // ---------------------------------------------------------------------------
 
 EmCPU68K::EmCPU68K (EmSession* session) :
@@ -176,7 +176,7 @@ EmCPU68K::EmCPU68K (EmSession* session) :
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::~EmCPU68K
+//		Â¥ EmCPU68K::~EmCPU68K
 // ---------------------------------------------------------------------------
 
 EmCPU68K::~EmCPU68K (void)
@@ -189,7 +189,7 @@ EmCPU68K::~EmCPU68K (void)
 #pragma mark -
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::Reset
+//		Â¥ EmCPU68K::Reset
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::Reset (Bool hardwareReset)
@@ -246,7 +246,7 @@ void EmCPU68K::Reset (Bool hardwareReset)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::Save
+//		Â¥ EmCPU68K::Save
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::Save (SessionFile& f)
@@ -262,7 +262,7 @@ void EmCPU68K::Save (SessionFile& f)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::Load
+//		Â¥ EmCPU68K::Load
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::Load (SessionFile& f)
@@ -280,7 +280,7 @@ void EmCPU68K::Load (SessionFile& f)
 #pragma mark -
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::Execute
+//		Â¥ EmCPU68K::Execute
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::Execute (void)
@@ -546,7 +546,7 @@ StoppedLoop:
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ExecuteSimple
+//		Â¥ EmCPU68K::ExecuteSimple
 // ---------------------------------------------------------------------------
 
 /*
@@ -594,7 +594,7 @@ StoppedLoop:
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ExecuteSpecial
+//		Â¥ EmCPU68K::ExecuteSpecial
 // ---------------------------------------------------------------------------
 
 Bool EmCPU68K::ExecuteSpecial (void)
@@ -685,7 +685,7 @@ Bool EmCPU68K::ExecuteSpecial (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ExecuteStoppedLoop
+//		Â¥ EmCPU68K::ExecuteStoppedLoop
 // ---------------------------------------------------------------------------
 
 Bool EmCPU68K::ExecuteStoppedLoop (void)
@@ -890,7 +890,7 @@ Bool EmCPU68K::ExecuteStoppedLoop (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::CycleSlowly
+//		Â¥ EmCPU68K::CycleSlowly
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::CycleSlowly (Bool sleeping)
@@ -916,7 +916,7 @@ void EmCPU68K::CycleSlowly (Bool sleeping)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::CheckAfterCycle
+//		Â¥ EmCPU68K::CheckAfterCycle
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::CheckAfterCycle (void)
@@ -926,7 +926,7 @@ void EmCPU68K::CheckAfterCycle (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::GetPC
+//		Â¥ EmCPU68K::GetPC
 // ---------------------------------------------------------------------------
 
 emuptr EmCPU68K::GetPC (void)
@@ -937,7 +937,7 @@ emuptr EmCPU68K::GetPC (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::GetSP
+//		Â¥ EmCPU68K::GetSP
 // ---------------------------------------------------------------------------
 
 emuptr EmCPU68K::GetSP (void)
@@ -948,7 +948,7 @@ emuptr EmCPU68K::GetSP (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::GetRegister
+//		Â¥ EmCPU68K::GetRegister
 // ---------------------------------------------------------------------------
 
 uint32 EmCPU68K::GetRegister (int index)
@@ -989,7 +989,7 @@ uint32 EmCPU68K::GetRegister (int index)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::SetPC
+//		Â¥ EmCPU68K::SetPC
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::SetPC (emuptr newPC)
@@ -999,7 +999,7 @@ void EmCPU68K::SetPC (emuptr newPC)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::SetSP
+//		Â¥ EmCPU68K::SetSP
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::SetSP (emuptr newPC)
@@ -1009,7 +1009,7 @@ void EmCPU68K::SetSP (emuptr newPC)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::SetRegister
+//		Â¥ EmCPU68K::SetRegister
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::SetRegister (int index, uint32 val)
@@ -1046,7 +1046,7 @@ void EmCPU68K::SetRegister (int index, uint32 val)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::Stopped
+//		Â¥ EmCPU68K::Stopped
 // ---------------------------------------------------------------------------
 // Return whether or not the CPU itself is halted.  This is seperate from
 // whether or not the session (that is, the thread emulating the CPU) is
@@ -1059,7 +1059,7 @@ Bool EmCPU68K::Stopped (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::CheckForBreak
+//		Â¥ EmCPU68K::CheckForBreak
 // ---------------------------------------------------------------------------
 // Check to see if the conditions tell us to break from the CPU Execute loop.
 
@@ -1079,7 +1079,7 @@ Bool EmCPU68K::CheckForBreak (void)
 #pragma mark -
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessInterrupt
+//		Â¥ EmCPU68K::ProcessInterrupt
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::ProcessInterrupt (int32 interrupt)
@@ -1092,7 +1092,7 @@ void EmCPU68K::ProcessInterrupt (int32 interrupt)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessException
+//		Â¥ EmCPU68K::ProcessException
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::ProcessException (ExceptionNumber exception)
@@ -1193,7 +1193,7 @@ void EmCPU68K::ProcessException (ExceptionNumber exception)
 
 	if (exception == kException_BusErr || exception == kException_AddressErr)
 	{
-		COMPILE_TIME_ASSERT (sizeof (ExceptionStackFrame2) == 14);
+		static_assert (sizeof (ExceptionStackFrame2) == 14);
 		m68k_areg (regs, 7) -= sizeof (ExceptionStackFrame2);
 		CHECK_STACK_POINTER_DECREMENT ();
 
@@ -1209,7 +1209,7 @@ void EmCPU68K::ProcessException (ExceptionNumber exception)
 	}
 	else
 	{
-		COMPILE_TIME_ASSERT (sizeof (ExceptionStackFrame1) == 6);
+		static_assert (sizeof (ExceptionStackFrame1) == 6);
 		m68k_areg (regs, 7) -= sizeof (ExceptionStackFrame1);
 		CHECK_STACK_POINTER_DECREMENT ();
 
@@ -1240,7 +1240,7 @@ void EmCPU68K::ProcessException (ExceptionNumber exception)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessIllegalInstruction
+//		Â¥ EmCPU68K::ProcessIllegalInstruction
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::ProcessIllegalInstruction (EmOpcode68K opcode)
@@ -1271,7 +1271,7 @@ void EmCPU68K::ProcessIllegalInstruction (EmOpcode68K opcode)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessJSR
+//		Â¥ EmCPU68K::ProcessJSR
 // ---------------------------------------------------------------------------
 
 int EmCPU68K::ProcessJSR (emuptr oldPC, emuptr dest)
@@ -1294,7 +1294,7 @@ int EmCPU68K::ProcessJSR (emuptr oldPC, emuptr dest)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessJSR_Ind
+//		Â¥ EmCPU68K::ProcessJSR_Ind
 // ---------------------------------------------------------------------------
 
 int EmCPU68K::ProcessJSR_Ind (emuptr oldPC, emuptr dest)
@@ -1317,7 +1317,7 @@ int EmCPU68K::ProcessJSR_Ind (emuptr oldPC, emuptr dest)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessLINK
+//		Â¥ EmCPU68K::ProcessLINK
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::ProcessLINK (int linkSize)
@@ -1333,7 +1333,7 @@ void EmCPU68K::ProcessLINK (int linkSize)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessRTE
+//		Â¥ EmCPU68K::ProcessRTE
 // ---------------------------------------------------------------------------
 
 int EmCPU68K::ProcessRTE (emuptr dest)
@@ -1356,7 +1356,7 @@ int EmCPU68K::ProcessRTE (emuptr dest)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::ProcessRTS
+//		Â¥ EmCPU68K::ProcessRTS
 // ---------------------------------------------------------------------------
 
 int EmCPU68K::ProcessRTS (emuptr dest)
@@ -1379,7 +1379,7 @@ int EmCPU68K::ProcessRTS (emuptr dest)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::CheckNewPC
+//		Â¥ EmCPU68K::CheckNewPC
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::CheckNewPC (emuptr dest)
@@ -1397,7 +1397,7 @@ void EmCPU68K::CheckNewPC (emuptr dest)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::CheckNewSP
+//		Â¥ EmCPU68K::CheckNewSP
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::CheckNewSP (EmStackChangeType type)
@@ -1415,14 +1415,14 @@ void EmCPU68K::CheckNewSP (EmStackChangeType type)
 #pragma mark -
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::InstallHookException
-//		¥ EmCPU68K::InstallHookJSR
-//		¥ EmCPU68K::InstallHookJSR_Ind
-//		¥ EmCPU68K::InstallHookLINK
-//		¥ EmCPU68K::InstallHookRTE
-//		¥ EmCPU68K::InstallHookRTS
-//		¥ EmCPU68K::InstallHookNewPC
-//		¥ EmCPU68K::InstallHookNewSP
+//		Â¥ EmCPU68K::InstallHookException
+//		Â¥ EmCPU68K::InstallHookJSR
+//		Â¥ EmCPU68K::InstallHookJSR_Ind
+//		Â¥ EmCPU68K::InstallHookLINK
+//		Â¥ EmCPU68K::InstallHookRTE
+//		Â¥ EmCPU68K::InstallHookRTS
+//		Â¥ EmCPU68K::InstallHookNewPC
+//		Â¥ EmCPU68K::InstallHookNewSP
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::InstallHookException (ExceptionNumber exceptionNumber,
@@ -1475,14 +1475,14 @@ void EmCPU68K::InstallHookNewSP (Hook68KNewSP fn)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::RemoveHookException
-//		¥ EmCPU68K::RemoveHookJSR
-//		¥ EmCPU68K::RemoveHookJSR_Ind
-//		¥ EmCPU68K::RemoveHookLINK
-//		¥ EmCPU68K::RemoveHookRTE
-//		¥ EmCPU68K::RemoveHookRTS
-//		¥ EmCPU68K::RemoveHookNewPC
-//		¥ EmCPU68K::RemoveHookNewSP
+//		Â¥ EmCPU68K::RemoveHookException
+//		Â¥ EmCPU68K::RemoveHookJSR
+//		Â¥ EmCPU68K::RemoveHookJSR_Ind
+//		Â¥ EmCPU68K::RemoveHookLINK
+//		Â¥ EmCPU68K::RemoveHookRTE
+//		Â¥ EmCPU68K::RemoveHookRTS
+//		Â¥ EmCPU68K::RemoveHookNewPC
+//		Â¥ EmCPU68K::RemoveHookNewSP
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::RemoveHookException (ExceptionNumber exceptionNumber,
@@ -1580,7 +1580,7 @@ void EmCPU68K::RemoveHookNewSP (Hook68KNewSP fn)
 #pragma mark -
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::GetRegisters
+//		Â¥ EmCPU68K::GetRegisters
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::GetRegisters (regstruct& registers)
@@ -1593,7 +1593,7 @@ void EmCPU68K::GetRegisters (regstruct& registers)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::SetRegisters
+//		Â¥ EmCPU68K::SetRegisters
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::SetRegisters (regstruct& registers)
@@ -1608,7 +1608,7 @@ void EmCPU68K::SetRegisters (regstruct& registers)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::UpdateSRFromRegisters
+//		Â¥ EmCPU68K::UpdateSRFromRegisters
 // ---------------------------------------------------------------------------
 // Create a 16-bit status register value from the broken out fields.  In
 // general, we keep the various fields separate for speed of access.  However,
@@ -1640,7 +1640,7 @@ void EmCPU68K::UpdateSRFromRegisters (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::UpdateRegistersFromSR
+//		Â¥ EmCPU68K::UpdateRegistersFromSR
 // ---------------------------------------------------------------------------
 // Break out all of the fields from the 16-bit status register into their own
 // separate variables.
@@ -1706,7 +1706,7 @@ void EmCPU68K::UpdateRegistersFromSR (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::GetCycleCount
+//		Â¥ EmCPU68K::GetCycleCount
 // ---------------------------------------------------------------------------
 
 uint32 EmCPU68K::GetCycleCount (void)
@@ -1716,7 +1716,7 @@ uint32 EmCPU68K::GetCycleCount (void)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::BusError
+//		Â¥ EmCPU68K::BusError
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::BusError (emuptr address, long size, Bool forRead)
@@ -1732,7 +1732,7 @@ void EmCPU68K::BusError (emuptr address, long size, Bool forRead)
 
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::AddressError
+//		Â¥ EmCPU68K::AddressError
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::AddressError (emuptr address, long size, Bool forRead)
@@ -1750,7 +1750,7 @@ void EmCPU68K::AddressError (emuptr address, long size, Bool forRead)
 #pragma mark -
 
 // ---------------------------------------------------------------------------
-//		¥ EmCPU68K::InitializeUAETables
+//		Â¥ EmCPU68K::InitializeUAETables
 // ---------------------------------------------------------------------------
 
 void EmCPU68K::InitializeUAETables (void)
