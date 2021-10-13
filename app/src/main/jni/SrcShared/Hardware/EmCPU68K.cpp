@@ -110,7 +110,7 @@ struct alignas(2) ExceptionStackFrame2
 };
 
 //#include "PalmPackPop.h"
-PRINT_SIZEOF(ExceptionStackFrame2)
+PRINT_SIZEOF(ExceptionStackFrame1)
 
 
 EmCPU68K*	gCPU68K;
