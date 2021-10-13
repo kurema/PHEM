@@ -6,4 +6,4 @@ NDK_TOOLCHAIN_VERSION := 4.9
 
 #Enable static_assert
 APP_CPPFLAGS += -std=c++11
-APP_CPPFLAGS += -mno-unaligned-access
+APP_CPPFLAGS += -mstrict-align
