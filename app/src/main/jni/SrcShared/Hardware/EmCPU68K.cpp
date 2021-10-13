@@ -93,17 +93,17 @@ uae_u32	gKernelStackOverflowed;
 
 struct alignas(2) ExceptionStackFrame1
 {
-	uint16 statusRegister;
-	uint32 programCounter;
+	uint16_t statusRegister;
+	uint32_t programCounter;
 };
 
 struct alignas(2) ExceptionStackFrame2
 {
-	uint16 functionCode;
-	uint32 accessAddress;
-	uint16 instructionRegister;
-	uint16 statusRegister;
-	uint32 programCounter;
+	uint16_t functionCode;
+	uint32_t accessAddress;
+	uint16_t instructionRegister;
+	uint16_t statusRegister;
+	uint32_t programCounter;
 };
 
 #include "PalmPackPop.h"
