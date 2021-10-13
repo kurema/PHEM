@@ -6,4 +6,4 @@ Don't forget to choose the correct Build Variant (Flavor)
 GPL-2.0
 
 #### Note
-`master` is my playground. There's too many commits to run GitHub Actions.
+`playground` is my playground. There's too many commits in order to run GitHub Actions.
