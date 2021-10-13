@@ -746,7 +746,7 @@ emuptr EmRegs328::GetAddressStart (void)
 
 uint32 EmRegs328::GetAddressRange (void)
 {
-	static_assert (kMemorySize == 0x0B14);
+	static_assert (kMemorySize == 0x0B14, "kMemorySize not correct");
 
 	return kMemorySize;
 }
