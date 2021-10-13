@@ -42,6 +42,9 @@ android {
             ndkBuild {
                 arguments "NDK_APPLICATION_MK=src/main/jni/Application.mk"
             }
+            cmake {
+                cppFlags "-std=c++11"
+            }
         }
     }
 
@@ -54,7 +57,6 @@ android {
     externalNativeBuild {
         ndkBuild {
             path 'src/main/jni/Android.mk'
-            cppFlags "-std=c++11"
         }
     }
     lintOptions {
