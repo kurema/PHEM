@@ -108,11 +108,12 @@ struct alignas(2) ExceptionStackFrame2
 
 #include "PalmPackPop.h"
 //test
+/*
 template <typename T, int> struct type_;
 #define PRINT_SIZEOF(type) inline void size_of_(type_<type, sizeof(type)>) {}
 PRINT_SIZEOF(ExceptionStackFrame1)
 PRINT_SIZEOF(ExceptionStackFrame2)
-
+*/
 
 EmCPU68K*	gCPU68K;
 
