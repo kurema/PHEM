@@ -55,6 +55,9 @@ perfRec perftbl[65536];
 #define SPCFLAG_END_OF_CYCLE	(0x40000000)
 
 
+//Test
+template <typename T, int> struct type_;
+#define PRINT_SIZEOF(type) inline void size_of_(type_<type, sizeof(type)>) {}
 // Data needed by UAE.
 
 int	areg_byteinc[] = { 1,1,1,1,1,1,1,2 };	// (normally in newcpu.c)
@@ -89,9 +92,6 @@ uae_u32	gKernelStackOverflowed;
 
 // Definitions of the stack frames used in EmCPU68K::ProcessException.
 
-//Test
-template <typename T, int> struct type_;
-#define PRINT_SIZEOF(type) inline void size_of_(type_<type, sizeof(type)>) {}
 //#include "PalmPack.h"
 
 struct alignas(2) ExceptionStackFrame1
