@@ -6,3 +6,5 @@ NDK_TOOLCHAIN_VERSION := 4.9
 
 #Enable static_assert
 APP_CPPFLAGS += -std=c++11
+#Enable pack on aarch64
+APP_CPPFLAGS += -mno-strict-align
