@@ -35,191 +35,191 @@
  ***********************************************************************/
 struct HwrM68EZ328Type {
 
-	UInt8		scr;								// $000: System Control Register
-	UInt8											___filler0[0x004-0x001];
-	UInt8		chipID;							// $004: Chip ID Register
-	UInt8		maskID;							// $005: Mask ID Register
-	UInt16	swID;								// $006: Software ID Register
-	UInt8											___filler1[0x100-0x008];				 
+	uint8_t		scr;								// $000: System Control Register
+	uint8_t											___filler0[0x004-0x001];
+	uint8_t		chipID;							// $004: Chip ID Register
+	uint8_t		maskID;							// $005: Mask ID Register
+	uint16_t	swID;								// $006: Software ID Register
+	uint8_t											___filler1[0x100-0x008];				 
 	
-	UInt16	csAGroupBase;					// $100: Chip Select Group A Base Register
-	UInt16	csBGroupBase;					// $102: Chip Select Group B Base Register
-	UInt16	csCGroupBase;					// $104: Chip Select Group C Base Register
-	UInt16	csDGroupBase;					// $106: Chip Select Group D Base Register
+	uint16_t	csAGroupBase;					// $100: Chip Select Group A Base Register
+	uint16_t	csBGroupBase;					// $102: Chip Select Group B Base Register
+	uint16_t	csCGroupBase;					// $104: Chip Select Group C Base Register
+	uint16_t	csDGroupBase;					// $106: Chip Select Group D Base Register
 
-	UInt8											___filler6[0x110-0x108];
+	uint8_t											___filler6[0x110-0x108];
 
-	UInt16	csASelect;						// $110: Group A Chip Select Register
-	UInt16	csBSelect;						// $112: Group B Chip Select Register
-	UInt16	csCSelect;						// $114: Group C Chip Select Register
-	UInt16	csDSelect;						// $116: Group D Chip Select Register
+	uint16_t	csASelect;						// $110: Group A Chip Select Register
+	uint16_t	csBSelect;						// $112: Group B Chip Select Register
+	uint16_t	csCSelect;						// $114: Group C Chip Select Register
+	uint16_t	csDSelect;						// $116: Group D Chip Select Register
 	
-	UInt16	emuCS;						   // $118: EMU Chip Select Register
+	uint16_t	emuCS;						   // $118: EMU Chip Select Register
 	
-	UInt8											___filler2[0x200-0x11A];		
+	uint8_t											___filler2[0x200-0x11A];		
 	
-	UInt16	pllControl;						// $200: PLL Control Register
-	UInt16	pllFreqSel;						// $202: PLL Frequency Select Register
-	UInt16	pllTest;							// $204: PLL Test Register (do not access)
-	UInt8											___filler44;
-	UInt8		pwrControl;						// $207: Power Control Register
+	uint16_t	pllControl;						// $200: PLL Control Register
+	uint16_t	pllFreqSel;						// $202: PLL Frequency Select Register
+	uint16_t	pllTest;							// $204: PLL Test Register (do not access)
+	uint8_t											___filler44;
+	uint8_t		pwrControl;						// $207: Power Control Register
 	
-	UInt8											___filler3[0x300-0x208];
+	uint8_t											___filler3[0x300-0x208];
 	
-	UInt8		intVector;						// $300: Interrupt Vector Register
-	UInt8											___filler4;
-	UInt16	intControl;						// $302: Interrupt Control Register
-	UInt16	intMaskHi;						// $304: Interrupt Mask Register/HIGH word
-	UInt16	intMaskLo;						// $306: Interrupt Mask Register/LOW word
-	UInt8											___filler7[0x30c-0x308];
-	UInt16	intStatusHi;					// $30C: Interrupt Status Register/HIGH word
-	UInt16	intStatusLo;					// $30E: Interrupt Status Register/LOW word
-	UInt16	intPendingHi;					// $310: Interrupt Pending Register
-	UInt16	intPendingLo;					// $312: Interrupt Pending Register
+	uint8_t		intVector;						// $300: Interrupt Vector Register
+	uint8_t											___filler4;
+	uint16_t	intControl;						// $302: Interrupt Control Register
+	uint16_t	intMaskHi;						// $304: Interrupt Mask Register/HIGH word
+	uint16_t	intMaskLo;						// $306: Interrupt Mask Register/LOW word
+	uint8_t											___filler7[0x30c-0x308];
+	uint16_t	intStatusHi;					// $30C: Interrupt Status Register/HIGH word
+	uint16_t	intStatusLo;					// $30E: Interrupt Status Register/LOW word
+	uint16_t	intPendingHi;					// $310: Interrupt Pending Register
+	uint16_t	intPendingLo;					// $312: Interrupt Pending Register
 	
-	UInt8 											___filler4a[0x400-0x314];
+	uint8_t 											___filler4a[0x400-0x314];
 	
-	UInt8		portADir;						// $400: Port A Direction Register
-	UInt8		portAData;						// $401: Port A Data Register
-	UInt8		portAPullupEn;					// $402: Port A Pullup Enable (similar to Select on DB)
-	UInt8											___filler8[5];	
+	uint8_t		portADir;						// $400: Port A Direction Register
+	uint8_t		portAData;						// $401: Port A Data Register
+	uint8_t		portAPullupEn;					// $402: Port A Pullup Enable (similar to Select on DB)
+	uint8_t											___filler8[5];	
 	
-	UInt8		portBDir;						// $408: Port B Direction Register
-	UInt8		portBData;						// $409: Port B Data Register
-	UInt8		portBPullupEn;					// $40A: Port B Pullup Enable
-	UInt8		portBSelect;					// $40B: Port B Select Register	
+	uint8_t		portBDir;						// $408: Port B Direction Register
+	uint8_t		portBData;						// $409: Port B Data Register
+	uint8_t		portBPullupEn;					// $40A: Port B Pullup Enable
+	uint8_t		portBSelect;					// $40B: Port B Select Register	
 	
-	UInt8											___filler9[4];
+	uint8_t											___filler9[4];
 	
-	UInt8		portCDir;						// $410: Port C Direction Register
-	UInt8		portCData;						// $411: Port C Data Register
-	UInt8		portCPulldnEn;					// $412: Port C Pulldown Enable
-	UInt8		portCSelect;					// $413: Port C Select Register	
+	uint8_t		portCDir;						// $410: Port C Direction Register
+	uint8_t		portCData;						// $411: Port C Data Register
+	uint8_t		portCPulldnEn;					// $412: Port C Pulldown Enable
+	uint8_t		portCSelect;					// $413: Port C Select Register	
 	
-	UInt8											___filler10[4];
+	uint8_t											___filler10[4];
 	
-	UInt8		portDDir;						// $418: Port D Direction Register
-	UInt8		portDData;						// $419: Port D Data Register
-	UInt8		portDPullupEn;					// $41A: Port D Pull-up Enable
-	UInt8		portDSelect;					// $41B: Port D Select Register
-	UInt8		portDPolarity;					// $41C: Port D Polarity Register
-	UInt8		portDIntReqEn;					// $41D: Port D Interrupt Request Enable
-	UInt8		portDKbdIntEn;					// $41E: Port D Keyboard Interrupt Enable
-	UInt8		portDIntEdge;					// $41F: Port D IRQ Edge Register
+	uint8_t		portDDir;						// $418: Port D Direction Register
+	uint8_t		portDData;						// $419: Port D Data Register
+	uint8_t		portDPullupEn;					// $41A: Port D Pull-up Enable
+	uint8_t		portDSelect;					// $41B: Port D Select Register
+	uint8_t		portDPolarity;					// $41C: Port D Polarity Register
+	uint8_t		portDIntReqEn;					// $41D: Port D Interrupt Request Enable
+	uint8_t		portDKbdIntEn;					// $41E: Port D Keyboard Interrupt Enable
+	uint8_t		portDIntEdge;					// $41F: Port D IRQ Edge Register
 	
-	UInt8		portEDir;						// $420: Port E Direction Register
-	UInt8		portEData;						// $421: Port E Data Register
-	UInt8		portEPullupEn;					// $422: Port E Pull-up Enable
-	UInt8		portESelect;					// $423: Port E Select Register
+	uint8_t		portEDir;						// $420: Port E Direction Register
+	uint8_t		portEData;						// $421: Port E Data Register
+	uint8_t		portEPullupEn;					// $422: Port E Pull-up Enable
+	uint8_t		portESelect;					// $423: Port E Select Register
 	
-	UInt8											___filler14[4];
+	uint8_t											___filler14[4];
 	
-	UInt8		portFDir;						// $428: Port F Direction Register
-	UInt8		portFData;						// $429: Port F Data Register
-	UInt8		portFPullupdnEn;				// $42A: Port F Pull-up/down Enable
-	UInt8		portFSelect;					// $42B: Port F Select Register
+	uint8_t		portFDir;						// $428: Port F Direction Register
+	uint8_t		portFData;						// $429: Port F Data Register
+	uint8_t		portFPullupdnEn;				// $42A: Port F Pull-up/down Enable
+	uint8_t		portFSelect;					// $42B: Port F Select Register
 	
-	UInt8											___filler16[4];
+	uint8_t											___filler16[4];
 		
-	UInt8		portGDir;						// $430: Port G Direction Register
-	UInt8		portGData;						// $431: Port G Data Register
-	UInt8		portGPullupEn;					// $432: Port G Pull-up Enable
-	UInt8		portGSelect;					// $433: Port G Select Register
+	uint8_t		portGDir;						// $430: Port G Direction Register
+	uint8_t		portGData;						// $431: Port G Data Register
+	uint8_t		portGPullupEn;					// $432: Port G Pull-up Enable
+	uint8_t		portGSelect;					// $433: Port G Select Register
 	
-	UInt8											___filler2000[0x500-0x434];
+	uint8_t											___filler2000[0x500-0x434];
 
-	UInt16	pwmControl;						// $500: PWM Control Register
-	UInt8		pwmSampleHi;    				// $502: PWM Sample - high byte
-	UInt8		pwmSampleLo;					// $503: PWM Sample - low byte
-	UInt8		pwmPeriod;						// $504: PWM Period
-	UInt8		pwmCounter;						// $505: PWM Counter
+	uint16_t	pwmControl;						// $500: PWM Control Register
+	uint8_t		pwmSampleHi;    				// $502: PWM Sample - high byte
+	uint8_t		pwmSampleLo;					// $503: PWM Sample - low byte
+	uint8_t		pwmPeriod;						// $504: PWM Period
+	uint8_t		pwmCounter;						// $505: PWM Counter
 	
-	UInt8											___filler24[0x600-0x506];
+	uint8_t											___filler24[0x600-0x506];
 	
-	UInt16	tmr1Control;					// $600: Timer 1 Control Register
-	UInt16	tmr1Prescaler;					// $602: Timer 1 Prescaler Register
-	UInt16	tmr1Compare;					// $604: Timer 1 Compare Register
-	UInt16	tmr1Capture;					// $606: Timer 1 Capture Register
-	UInt16	tmr1Counter;					// $608: Timer 1 Counter Register
-	UInt16	tmr1Status;						// $60A: Timer 1 Status Register
+	uint16_t	tmr1Control;					// $600: Timer 1 Control Register
+	uint16_t	tmr1Prescaler;					// $602: Timer 1 Prescaler Register
+	uint16_t	tmr1Compare;					// $604: Timer 1 Compare Register
+	uint16_t	tmr1Capture;					// $606: Timer 1 Capture Register
+	uint16_t	tmr1Counter;					// $608: Timer 1 Counter Register
+	uint16_t	tmr1Status;						// $60A: Timer 1 Status Register
 	
-	UInt8											___filler25[0x800-0x60C];
+	uint8_t											___filler25[0x800-0x60C];
 		
-	UInt16	spiMasterData;					// $800: SPI Master Data Register
-	UInt16	spiMasterControl;				// $802: SPI Master Control Register
+	uint16_t	spiMasterData;					// $800: SPI Master Data Register
+	uint16_t	spiMasterControl;				// $802: SPI Master Control Register
 	
-	UInt8											___filler27[0x900-0x804];
+	uint8_t											___filler27[0x900-0x804];
 	
-	UInt16	uControl;						// $900: Uart Control Register
-	UInt16	uBaud;							// $902: Uart Baud Control Register
-	UInt16	uReceive;						// $904: Uart Receive Register
-	UInt16	uTransmit;						// $906: Uart Transmit Register
-	UInt16	uMisc;							// $908: Uart Miscellaneous Register
-	UInt16	uNonIntPresc;					// $90A: Uart IRDA Non-Integer Prescaler
+	uint16_t	uControl;						// $900: Uart Control Register
+	uint16_t	uBaud;							// $902: Uart Baud Control Register
+	uint16_t	uReceive;						// $904: Uart Receive Register
+	uint16_t	uTransmit;						// $906: Uart Transmit Register
+	uint16_t	uMisc;							// $908: Uart Miscellaneous Register
+	uint16_t	uNonIntPresc;					// $90A: Uart IRDA Non-Integer Prescaler
 	
-	UInt8											___filler28[0xA00-0x90C];
+	uint8_t											___filler28[0xA00-0x90C];
 	
-	UInt32	lcdStartAddr;					// $A00: Screen Starting Address Register
-	UInt8											___filler29;
-	UInt8		lcdPageWidth;					// $A05: Virtual Page Width Register
-	UInt8											___filler30[2];
-	UInt16	lcdScreenWidth;				// $A08: Screen Width Register
-	UInt16	lcdScreenHeight;				// $A0A: Screen Height Register
-	UInt8											___filler31[0xA18-0xA0C];
-	UInt16	lcdCursorXPos;					// $A18: Cursor X Position
-	UInt16	lcdCursorYPos;					// $A1A:	Cursor Y Position
-	UInt16	lcdCursorWidthHeight;		// $A1C: Cursor Width and Height
-	UInt8											___filler32;
-	UInt8		lcdBlinkControl;				// $A1F: Blink Control Register
-	UInt8		lcdPanelControl;				// $A20: Panel Interface Control Register
-	UInt8		lcdPolarity;					// $A21: Polarity Config Register
-	UInt8											___filler33;						
-	UInt8		lcdACDRate;						// $A23: ACD (M) Rate Control Register
-	UInt8											___filler34;
-	UInt8		lcdPixelClock;					// $A25: Pixel Clock Divider Register
-	UInt8											___filler35;
-	UInt8		lcdClockControl;				// $A27: Clocking Control Register
-	UInt8											___filler36;
-	UInt8		lcdRefreshRateAdj;			// $A29: Refresh Rate Adjustment Register
-	UInt8											___filler2003[0xA2D-0xA2A];
-	UInt8    lcdPanningOffset;				// $A2D: Panning Offset Register
+	uint32_t	lcdStartAddr;					// $A00: Screen Starting Address Register
+	uint8_t											___filler29;
+	uint8_t		lcdPageWidth;					// $A05: Virtual Page Width Register
+	uint8_t											___filler30[2];
+	uint16_t	lcdScreenWidth;				// $A08: Screen Width Register
+	uint16_t	lcdScreenHeight;				// $A0A: Screen Height Register
+	uint8_t											___filler31[0xA18-0xA0C];
+	uint16_t	lcdCursorXPos;					// $A18: Cursor X Position
+	uint16_t	lcdCursorYPos;					// $A1A:	Cursor Y Position
+	uint16_t	lcdCursorWidthHeight;		// $A1C: Cursor Width and Height
+	uint8_t											___filler32;
+	uint8_t		lcdBlinkControl;				// $A1F: Blink Control Register
+	uint8_t		lcdPanelControl;				// $A20: Panel Interface Control Register
+	uint8_t		lcdPolarity;					// $A21: Polarity Config Register
+	uint8_t											___filler33;						
+	uint8_t		lcdACDRate;						// $A23: ACD (M) Rate Control Register
+	uint8_t											___filler34;
+	uint8_t		lcdPixelClock;					// $A25: Pixel Clock Divider Register
+	uint8_t											___filler35;
+	uint8_t		lcdClockControl;				// $A27: Clocking Control Register
+	uint8_t											___filler36;
+	uint8_t		lcdRefreshRateAdj;			// $A29: Refresh Rate Adjustment Register
+	uint8_t											___filler2003[0xA2D-0xA2A];
+	uint8_t    lcdPanningOffset;				// $A2D: Panning Offset Register
 	
-	UInt8											___filler37[0xA31-0xA2E];
+	uint8_t											___filler37[0xA31-0xA2E];
 	
-	UInt8		lcdFrameRate;					// $A31: Frame Rate Control Modulation Register
-	UInt8											___filler2004;
-	UInt8		lcdGrayPalette;				// $A33: Gray Palette Mapping Register
-	UInt8		lcdReserved;					// $A34: Reserved
-	UInt8											___filler2005;
-	UInt16	lcdContrastControlPWM;		// $A36: Contrast Control
+	uint8_t		lcdFrameRate;					// $A31: Frame Rate Control Modulation Register
+	uint8_t											___filler2004;
+	uint8_t		lcdGrayPalette;				// $A33: Gray Palette Mapping Register
+	uint8_t		lcdReserved;					// $A34: Reserved
+	uint8_t											___filler2005;
+	uint16_t	lcdContrastControlPWM;		// $A36: Contrast Control
 	
-	UInt8											___filler40[0xB00-0xA38];
+	uint8_t											___filler40[0xB00-0xA38];
 	
-	UInt32	rtcHourMinSec;					// $B00: RTC Hours, Minutes, Seconds Register
-	UInt32	rtcAlarm;						// $B04: RTC Alarm Register
-	UInt8											___filler2001[0xB0A-0xB08];
-	UInt16   rtcWatchDog;               // $B0A: RTC Watchdog Timer
-	UInt16	rtcControl;						// $B0C: RTC Control Register
-	UInt16	rtcIntStatus;					// $B0E: RTC Interrupt Status Register
-	UInt16	rtcIntEnable;					// $B10: RTC Interrupt Enable Register
-	UInt16	stopWatch;						// $B12: Stopwatch Minutes
-	UInt8											___filler2002[0xB1A-0xB14];
-	UInt16	rtcDay;							// $B1A: RTC Day
-	UInt16   rtcDayAlarm;					// $B1C: RTC Day Alarm
+	uint32_t	rtcHourMinSec;					// $B00: RTC Hours, Minutes, Seconds Register
+	uint32_t	rtcAlarm;						// $B04: RTC Alarm Register
+	uint8_t											___filler2001[0xB0A-0xB08];
+	uint16_t   rtcWatchDog;               // $B0A: RTC Watchdog Timer
+	uint16_t	rtcControl;						// $B0C: RTC Control Register
+	uint16_t	rtcIntStatus;					// $B0E: RTC Interrupt Status Register
+	uint16_t	rtcIntEnable;					// $B10: RTC Interrupt Enable Register
+	uint16_t	stopWatch;						// $B12: Stopwatch Minutes
+	uint8_t											___filler2002[0xB1A-0xB14];
+	uint16_t	rtcDay;							// $B1A: RTC Day
+	uint16_t   rtcDayAlarm;					// $B1C: RTC Day Alarm
 	
-   UInt8											___filler41[0xC00-0xB1E];
+   uint8_t											___filler41[0xC00-0xB1E];
 
-   UInt16	dramConfig;                // $C00: DRAM Memory Config Register
-   UInt16   dramControl;               // $C02: DRAM Control Register
+   uint16_t	dramConfig;                // $C00: DRAM Memory Config Register
+   uint16_t   dramControl;               // $C02: DRAM Control Register
 
-   UInt8                                ___filler42[0xD00-0xC04];
+   uint8_t                                ___filler42[0xD00-0xC04];
 	
-	UInt32	emuAddrCompare;				// $D00: Emulation Address Compare Register   
-	UInt32	emuAddrMask;					// $D04: Emulation Address Mask Register
-	UInt16	emuControlCompare;			// $D08: Emulation Control Compare Register
-	UInt16	emuControlMask;				// $D0A: Emulation Control Mask Register
-	UInt16	emuControl;						// $DOC: Emulation Control Register
-	UInt16	emuStatus;						// $D0E: Emulation Status Register
+	uint32_t	emuAddrCompare;				// $D00: Emulation Address Compare Register   
+	uint32_t	emuAddrMask;					// $D04: Emulation Address Mask Register
+	uint16_t	emuControlCompare;			// $D08: Emulation Control Compare Register
+	uint16_t	emuControlMask;				// $D0A: Emulation Control Mask Register
+	uint16_t	emuControl;						// $DOC: Emulation Control Register
+	uint16_t	emuStatus;						// $D0E: Emulation Status Register
 };
 
 typedef volatile struct HwrM68EZ328Type*	HwrM68EZ328Ptr;
@@ -233,24 +233,24 @@ typedef volatile struct HwrM68EZ328Type*	HwrM68EZ328Ptr;
  ***********************************************************************/
 typedef struct HwrJerryPLDType {
 
-	UInt8 dspOn;			// pld output turn dsp on/off
-	UInt8 unused1;
-	UInt8	chargeOn;		// pld output turn charger on/off
-	UInt8	unused2;
-	UInt8 refOn;			// pld output turn 3.0 volt reference on/off
-	UInt8	unused3;
-	UInt8	pipaBiasEnable;	// pld output turn PA bias on/off
-	UInt8	unused4;
-	UInt8	dspReset;		// pld output control dsp reset pin up/down
-	UInt8	unused5;
-	UInt8	ezToDsl;			// pld output comm. pin to dsp
-	UInt8 unused6;
-	UInt8	rs232Shdn;		// pld output control rs232 interface chip on/off
-	UInt8	unused7;
-	UInt8	spareOut;		// pld output not used
-	UInt8	unused8;
-	UInt16	dTo3Sln;			// pld input comm. from dsp
-	UInt16	iXtrnl2;			// pld input cradle connector pin
+	uint8_t dspOn;			// pld output turn dsp on/off
+	uint8_t unused1;
+	uint8_t	chargeOn;		// pld output turn charger on/off
+	uint8_t	unused2;
+	uint8_t refOn;			// pld output turn 3.0 volt reference on/off
+	uint8_t	unused3;
+	uint8_t	pipaBiasEnable;	// pld output turn PA bias on/off
+	uint8_t	unused4;
+	uint8_t	dspReset;		// pld output control dsp reset pin up/down
+	uint8_t	unused5;
+	uint8_t	ezToDsl;			// pld output comm. pin to dsp
+	uint8_t unused6;
+	uint8_t	rs232Shdn;		// pld output control rs232 interface chip on/off
+	uint8_t	unused7;
+	uint8_t	spareOut;		// pld output not used
+	uint8_t	unused8;
+	uint16_t	dTo3Sln;			// pld input comm. from dsp
+	uint16_t	iXtrnl2;			// pld input cradle connector pin
 }	HwrJerryPLDType;
 
 typedef	volatile HwrJerryPLDType*	HwrJerryPldPtr;
