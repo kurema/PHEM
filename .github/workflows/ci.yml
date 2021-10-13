@@ -53,6 +53,12 @@ jobs:
       uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
     - name: build
       run: |
+        if [[ -n "${{ secrets.KEYSTORE_BASE64 }}" ]]; then
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}"
+          export KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
+          export KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+        fi
         chmod +x ./gradlew
         ./gradlew assembleRelease
     - uses: actions/upload-artifact@v2
